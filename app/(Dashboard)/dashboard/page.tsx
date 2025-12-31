@@ -86,7 +86,7 @@ export default function DashboardPage() {
   // Redirect if not authenticated
   useEffect(() => {
     if (!loading && !isAuthenticated) {
-      router.push('/auth/login');
+      router.push('/login');
     }
   }, [loading, isAuthenticated, router]);
 
@@ -548,7 +548,7 @@ function ClinicianDashboard({ stats, userProfile, onNavigate }: {
               <Stack spacing={2}>
                 <Stack direction="row" alignItems="center" spacing={2}>
                   <People color="primary" />
-                  <Typography variant="h6">My Patients</Typography>
+                  <Typography variant="h6">Enrolled Children</Typography>
                 </Stack>
                 <Typography variant="h3" color="primary">
                   {userProfile?.patients?.length || 0}
@@ -560,7 +560,7 @@ function ClinicianDashboard({ stats, userProfile, onNavigate }: {
                   variant="contained" 
                   fullWidth
                   startIcon={<PersonAdd />}
-                  onClick={() => onNavigate('/patients')}
+                  onClick={() => onNavigate('/dashboard/clinicians/children')}
                 >
                   Manage Patients
                 </Button>
@@ -715,7 +715,7 @@ function ClinicianDashboard({ stats, userProfile, onNavigate }: {
               variant="outlined" 
               fullWidth
               startIcon={<PersonAdd />}
-              onClick={() => onNavigate('/patients/new')}
+              onClick={() => onNavigate('/dashboard/clinicians/children/new')}
               sx={{ py: 1.5 }}
             >
               Add Patient
@@ -800,7 +800,7 @@ function GuardianDashboard({ stats, userProfile, onNavigate }: {
                     '&:hover': { bgcolor: 'grey.100' }
                   }}
                   fullWidth
-                  onClick={() => onNavigate('/children')}
+                  onClick={() => onNavigate('/dashboard/guardian/children')}
                 >
                   View All Children
                 </Button>

@@ -43,11 +43,11 @@ export default function ClinicianDashboardPage() {
   };
 
   const handleRegisterChild = () => {
-    router.push('/clinician/children/new');
+    router.push('/dashboard/clinicians/children/new');
   };
 
   const handleViewPatient = (patientId: string) => {
-    router.push(`/clinician/children/${patientId}`);
+    router.push(`/dashboard/clinicians/children/${patientId}`);
   };
 
   if (loading) {
@@ -131,7 +131,7 @@ export default function ClinicianDashboardPage() {
             </CardContent>
           </Card>
 
-          <Card className="hover:shadow-md transition-shadow cursor-pointer" onClick={() => router.push('/clinician/children')}>
+          <Card className="hover:shadow-md transition-shadow cursor-pointer" onClick={() => router.push('/dashboard/clinicians/children')}>
             <CardContent className="pt-6">
               <div className="text-4xl mb-4">📋</div>
               <h3 className="font-semibold mb-2">All Children</h3>
@@ -141,7 +141,7 @@ export default function ClinicianDashboardPage() {
             </CardContent>
           </Card>
 
-          <Card className="hover:shadow-md transition-shadow cursor-pointer" onClick={() => router.push('/clinician/appointments')}>
+          <Card className="hover:shadow-md transition-shadow cursor-pointer" onClick={() => router.push('/dashboard/clinicians/appointments')}>
             <CardContent className="pt-6">
               <div className="text-4xl mb-4">📅</div>
               <h3 className="font-semibold mb-2">Appointments</h3>

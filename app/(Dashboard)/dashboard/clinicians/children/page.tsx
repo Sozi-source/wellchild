@@ -49,11 +49,11 @@ export default function ClinicianChildrenPage() {
   };
 
   const handleRegisterChild = () => {
-    router.push('/clinician/children/new');
+    router.push('/dashboard/clinicians/children/new');
   };
 
   const handleViewChild = (patientId: string) => {
-    router.push(`/clinician/children/${patientId}`);
+    router.push(`/dashboard/clinicians/children/${patientId}`);
   };
 
   if (loading) {
@@ -68,10 +68,10 @@ export default function ClinicianChildrenPage() {
 
   return (
     <RoleProtectedLayout allowedRoles={['clinician']}>
-      <div className="container mx-auto px-4 py-8">
+      <div className="container mx-auto px-4 py-8 mt-5">
         <div className="flex justify-between items-center mb-8">
           <div>
-            <h1 className="text-3xl font-bold text-gray-900">My Children</h1>
+            <h1 className="text-3xl font-bold text-gray-900">Enrolled Children</h1>
             <p className="text-gray-600 mt-2">
               All children under your clinical care
             </p>
@@ -160,7 +160,7 @@ export default function ClinicianChildrenPage() {
                       variant="outline"
                       size="sm"
                       className="flex-1"
-                      onClick={() => router.push(`/clinician/children/${patient.id}/medical`)}
+                      onClick={() => router.push(`/dashboard/clinicians/children/${patient.id}/medical`)}
                     >
                       Medical
                     </Button>
