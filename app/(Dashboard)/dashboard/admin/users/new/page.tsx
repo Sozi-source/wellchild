@@ -3,7 +3,6 @@
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { createUserProfile } from '@/app/services/app.services';
-import UserForm from '@/app/components/UserForm';
 import type * as AppTypes from '@/app/types/app.types';
 
 // Create a type that matches what createUserProfile actually expects

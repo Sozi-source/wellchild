@@ -50,7 +50,7 @@ export default function AdminCliniciansPage() {
 
   return (
     <RoleProtectedLayout allowedRoles={['admin']}>
-      <div className="container mx-auto px-4 py-8">
+      <div className="container mx-auto px-4 py-8 mt-5">
         <div className="flex justify-between items-center mb-8">
           <div>
             <h1 className="text-3xl font-bold text-gray-900">Clinician Management</h1>

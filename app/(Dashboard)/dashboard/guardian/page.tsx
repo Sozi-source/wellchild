@@ -62,7 +62,7 @@ export default function GuardianDashboardPage() {
 
   return (
     <RoleProtectedLayout allowedRoles={['guardian']}>
-      <div className="container mx-auto px-4 py-8">
+      <div className="container mx-auto px-4 py-8 mt-5">
         <h1 className="text-3xl font-bold text-gray-900 mb-2">
           Welcome, {userProfile?.name}
         </h1>
@@ -102,7 +102,7 @@ export default function GuardianDashboardPage() {
             title="View All Children"
             description="Check all your children's health records"
             icon="📋"
-            onClick={() => router.push('/guardian/children')}
+            onClick={() => router.push('/dashboard/guardian/children')}
           />
           <QuickActionCard
             title="Upcoming Appointments"
@@ -199,7 +199,7 @@ export default function GuardianDashboardPage() {
                           variant="outline"
                           size="sm"
                           className="flex-1"
-                          onClick={() => router.push(`/guardian/children/${child.id}/growth`)}
+                          onClick={() => router.push(`/dashboard/guardian/children/${child.id}/growth`)}
                         >
                           Growth
                         </Button>

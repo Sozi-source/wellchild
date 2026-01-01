@@ -109,7 +109,7 @@ export default function RoleSidePanel() {
           id: 'patients',
           label: 'My Patients',
           icon: <Users className="h-5 w-5" />,
-          path: '/dashboard/clinician/patients',
+          path: '/dashboard/clinicians/children',
           roles: ['clinician']
         },
         {

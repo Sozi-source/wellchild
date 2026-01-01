@@ -168,10 +168,11 @@ export default function EnrollChildPage() {
       
       if (response.success) {
         setSuccess(`Child "${childData.name}" enrolled successfully! An invitation has been sent to ${guardianData.email}`);
+       
         
         // Redirect to child's profile after 3 seconds
         setTimeout(() => {
-          router.push(`dashboard/clinician/children/${response.data?.patientId}`);
+          router.push(`dashboard/clinicians/children/${response.data?.patientId}`);
         }, 3000);
       } else {
         setError('Failed to enroll child. Please try again.');
@@ -483,7 +484,7 @@ export default function EnrollChildPage() {
                 <Button
                   type="button"
                   variant="outline"
-                  onClick={() => router.push('/clinician/children')}
+                  onClick={() => router.push('/dashboard/clinicians/children')}
                 >
                   Cancel
                 </Button>
