@@ -3,7 +3,7 @@
 import { ReactNode } from 'react';
 import RoleProtectedLayout from '@/app/components/layout/RoleProtectedLayout';
 import RoleSidePanel from '@/app/components/layout/RoleSidePanel';
-import DashboardHeader from '@/app/components/layout/DashBoardLayout'; // We'll create this next
+import DashboardHeader from '@/app/components/layout/DashBoardHeader'
 
 type UserRole = 'guardian' | 'clinician' | 'admin';
 
@@ -32,13 +32,13 @@ export default function DashboardLayout({
         {showSidePanel && <RoleSidePanel />}
         
         <div className={showSidePanel ? 'lg:pl-64' : ''}>
-          {/* {showHeader && (
+          {showHeader && (
             <DashboardHeader 
               title={title}
               subtitle={subtitle}
               actions={headerActions}
             />
-          )} */}
+          )}
           
           <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
             {children}
