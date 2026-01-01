@@ -613,74 +613,6 @@ export interface AdminStats {
   errorRate?: number;
 }
 
-// ========== ADMIN MANAGEMENT TYPES ==========
-export interface AdminUserStats {
-  totalUsers: number;
-  activeUsers: number;
-  newUsersLast7Days: number;
-  usersByRole: Record<UserRole, number>;
-  pendingVerifications: number;
-  userActivityRate: number;
-}
-
-export interface AdminPatientStats {
-  totalPatients: number;
-  activePatients: number;
-  newPatientsLast30Days: number;
-  averagePatientsPerGuardian: number;
-  averagePatientsPerClinician: number;
-  patientsByStatus: Record<PatientStatus, number>;
-  patientsByGrowthStatus: Record<GrowthStatus, number>;
-}
-
-export interface AdminAuditFilter {
-  startDate?: Date;
-  endDate?: Date;
-  userId?: string;
-  userRole?: UserRole;
-  action?: string;
-  resourceType?: string;
-  limit?: number;
-  offset?: number;
-}
-
-export interface AdminUserQuery {
-  search?: string;
-  role?: UserRole;
-  isActive?: boolean;
-  isVerified?: boolean;
-  createdAfter?: Date;
-  createdBefore?: Date;
-  hasPatients?: boolean;
-  sortBy?: 'name' | 'email' | 'createdAt' | 'lastLogin';
-  sortOrder?: 'asc' | 'desc';
-  limit?: number;
-  offset?: number;
-}
-
-export interface BulkUserAction {
-  userIds: string[];
-  action: 'activate' | 'deactivate' | 'verify' | 'sendWelcomeEmail' | 'resetPassword';
-  reason?: string;
-  notifyUsers?: boolean;
-}
-
-export interface AdminReport {
-  id: string;
-  type: 'user_activity' | 'patient_growth' | 'system_usage' | 'compliance' | 'custom';
-  title: string;
-  description?: string;
-  data: any;
-  generatedAt: Date;
-  generatedBy: string;
-  dateRange: {
-    start: Date;
-    end: Date;
-  };
-  format: 'json' | 'csv' | 'pdf';
-  downloadUrl?: string;
-}
-
 // ========== FORM DATA TYPES ==========
 export interface PatientRegistrationData {
   name: string;
@@ -767,6 +699,24 @@ export interface PaginatedResponse<T> {
   pageSize: number;
   hasMore: boolean;
   totalPages: number;
+}
+
+export interface CreateUserAccountResponse {
+  userId: string;
+  email: string;
+  name: string;
+  role: UserRole;
+  tempPassword?: string;
+}
+
+// Or update your existing ApiResponse type to be generic:
+export interface ApiResponse<T = any> {
+  success: boolean;
+  data?: T;
+  error?: string;
+  message?: string;
+  timestamp: Date;
+  requestId?: string;
 }
 
 // ========== FILTER TYPES ==========
@@ -887,15 +837,13 @@ export interface AuditLog extends BaseEntity {
   userEmail: string;
   userRole: UserRole;
   action: string;
-  resourceType: 'patient' | 'user' | 'appointment' | 'medical_record' | 'invitation';
-  resourceId: string;
-  changes?: Record<string, { old: any; new: any }>;
+  targetUserId?: string;
+  details?: string;
+  metadata?: Record<string, any>;
   ipAddress?: string;
   userAgent?: string;
-  location?: {
-    country?: string;
-    city?: string;
-  };
+  createdAt: Date;
+  updatedAt: Date;
 }
 
 // ========== SYSTEM HEALTH TYPES ==========
@@ -953,13 +901,435 @@ export interface FirestoreUserData {
   [key: string]: any;
 }
 
-// ========== TYPE GUARDS ==========
-export function isUserProfile(obj: any): obj is UserProfile {
-  return obj && typeof obj === 'object' && 'uid' in obj && 'role' in obj;
+// ========== NEW: USER CREATION & MANAGEMENT TYPES ==========
+export interface AdminCreateUserData {
+  adminId: string;
+  email: string;
+  password: string;
+  name: string;
+  role: UserRole;
+  phone?: string;
+  clinicName?: string;
+  specialization?: string;
+  sendWelcomeEmail?: boolean;
+  requirePasswordChange?: boolean;
+  permissions?: Partial<UserPermissions>;
 }
 
-export function isHealthcarePatient(obj: any): obj is HealthcarePatient {
-  return obj && typeof obj === 'object' && 'medicalRecordNumber' in obj && 'clinicianIds' in obj;
+export interface UserCreationResponse {
+  userId: string;
+  tempPassword?: string;
+  email: string;
+  name: string;
+  role: UserRole;
+  createdAt: Date;
+}
+
+export interface UserUpdateRequest {
+  userId: string;
+  updates: Partial<{
+    name: string;
+    email: string;
+    phone: string;
+    role: UserRole;
+    clinicName: string;
+    specialization: string;
+    isActive: boolean;
+    isVerified: boolean;
+    permissions: Partial<UserPermissions>;
+    notificationPreferences: {
+      email?: boolean;
+      push?: boolean;
+      sms?: boolean;
+      appointmentReminders?: boolean;
+      healthAlerts?: boolean;
+    };
+  }>;
+  updatedBy: string; // Admin ID
+}
+
+export interface BulkUserCreationData {
+  users: Array<{
+    email: string;
+    name: string;
+    role: UserRole;
+    phone?: string;
+    clinicName?: string;
+    specialization?: string;
+  }>;
+  defaultPassword: string;
+  sendWelcomeEmails: boolean;
+  createdBy: string; // Admin ID
+}
+
+export interface BulkUserCreationResult {
+  success: number;
+  failed: number;
+  results: Array<{
+    email: string;
+    success: boolean;
+    userId?: string;
+    error?: string;
+  }>;
+  generatedPassword?: string;
+}
+
+export interface UserPasswordResetRequest {
+  userId: string;
+  resetBy: string; // Admin ID
+  sendEmail: boolean;
+  generateNewPassword?: boolean;
+  newPassword?: string;
+}
+
+export interface UserPasswordResetResponse {
+  success: boolean;
+  tempPassword?: string;
+  resetAt: Date;
+  resetBy: string;
+  emailSent: boolean;
+}
+
+export interface UserDeactivationRequest {
+  userId: string;
+  deactivatedBy: string; // Admin ID
+  reason?: string;
+  notifyUser: boolean;
+  message?: string;
+}
+
+export interface UserReactivationRequest {
+  userId: string;
+  reactivatedBy: string; // Admin ID
+  reason?: string;
+  notifyUser: boolean;
+}
+
+export interface UserRoleChangeRequest {
+  userId: string;
+  newRole: UserRole;
+  changedBy: string; // Admin ID
+  reason?: string;
+  effectiveDate?: Date;
+  permissions?: Partial<UserPermissions>;
+}
+
+export interface UserVerificationRequest {
+  userId: string;
+  verifiedBy: string; // Admin ID
+  verificationMethod?: 'manual' | 'document' | 'email';
+  notes?: string;
+}
+
+export interface UserPermissionUpdate {
+  userId: string;
+  permissions: Partial<UserPermissions>;
+  updatedBy: string; // Admin ID
+  reason?: string;
+}
+
+// ========== NEW: USER ACTIVITY & STATS TYPES ==========
+export interface UserActivityStats {
+  userId: string;
+  lastLogin: Date;
+  loginCount: number;
+  patientsCreated: number;
+  appointmentsScheduled: number;
+  recordsCreated: number;
+  lastActivity: Date;
+  averageSessionDuration: number;
+  notificationsSent: number;
+  invitationsSent: number;
+}
+
+export interface UserSessionData {
+  sessionId: string;
+  userId: string;
+  startTime: Date;
+  endTime?: Date;
+  duration?: number;
+  ipAddress?: string;
+  userAgent?: string;
+  deviceType?: 'desktop' | 'mobile' | 'tablet';
+  browser?: string;
+  os?: string;
+  activities: Array<{
+    action: string;
+    timestamp: Date;
+    resourceType?: string;
+    resourceId?: string;
+    details?: string;
+  }>;
+}
+
+export interface UserLoginHistory {
+  userId: string;
+  logins: Array<{
+    timestamp: Date;
+    ipAddress?: string;
+    userAgent?: string;
+    success: boolean;
+    failureReason?: string;
+    location?: {
+      country?: string;
+      city?: string;
+      latitude?: number;
+      longitude?: number;
+    };
+  }>;
+}
+
+// ========== NEW: USER VALIDATION TYPES ==========
+export interface UserValidationRules {
+  requireEmailVerification: boolean;
+  requirePhoneVerification: boolean;
+  requireStrongPassword: boolean;
+  passwordMinLength: number;
+  passwordRequireUppercase: boolean;
+  passwordRequireLowercase: boolean;
+  passwordRequireNumbers: boolean;
+  passwordRequireSpecialChars: boolean;
+  allowDuplicateEmails: boolean;
+  allowRoleChanges: boolean;
+  maxLoginAttempts: number;
+  lockoutDuration: number;
+  sessionTimeout: number;
+}
+
+export interface UserValidationResult {
+  email: {
+    valid: boolean;
+    available: boolean;
+    message?: string;
+  };
+  password: {
+    valid: boolean;
+    strength: 'very_weak' | 'weak' | 'medium' | 'strong' | 'very_strong';
+    score: number; // 0-100
+    message?: string;
+  };
+  name: {
+    valid: boolean;
+    message?: string;
+  };
+  role: {
+    valid: boolean;
+    allowed: boolean;
+    message?: string;
+  };
+  phone: {
+    valid: boolean;
+    format: boolean;
+    message?: string;
+  };
+  overall: {
+    valid: boolean;
+    errors: string[];
+    warnings: string[];
+  };
+}
+
+// ========== NEW: USER NOTIFICATION PREFERENCES ==========
+export interface UserNotificationSettings {
+  general: {
+    email: boolean;
+    push: boolean;
+    sms: boolean;
+  };
+  appointments: {
+    reminders: boolean;
+    confirmations: boolean;
+    cancellations: boolean;
+    changes: boolean;
+  };
+  medical: {
+    newRecords: boolean;
+    vaccineReminders: boolean;
+    growthAlerts: boolean;
+    testResults: boolean;
+  };
+  system: {
+    announcements: boolean;
+    updates: boolean;
+    securityAlerts: boolean;
+  };
+  frequency: {
+    email: 'immediate' | 'daily' | 'weekly';
+    push: 'immediate' | 'delayed';
+    sms: 'immediate' | 'urgent_only';
+  };
+  quietHours?: {
+    enabled: boolean;
+    start: string; // HH:mm format
+    end: string;   // HH:mm format
+    days: string[]; // ['monday', 'tuesday', ...]
+  };
+}
+
+// ========== NEW: USER PERMISSION MATRIX ==========
+export interface UserRolePermissions {
+  guardian: {
+    canViewOwnPatients: boolean;
+    canAddPatients: boolean;
+    canEditOwnPatientInfo: boolean;
+    canViewMedicalRecords: boolean;
+    canScheduleAppointments: boolean;
+    canCancelOwnAppointments: boolean;
+    canInviteGuardians: boolean;
+    canInviteClinicians: boolean;
+    canViewGrowthCharts: boolean;
+    canUploadDocuments: boolean;
+  };
+  clinician: {
+    canViewAllPatients: boolean;
+    canAddPatients: boolean;
+    canEditPatientInfo: boolean;
+    canCreateMedicalRecords: boolean;
+    canEditMedicalRecords: boolean;
+    canScheduleAppointments: boolean;
+    canManageAppointments: boolean;
+    canPrescribeMedications: boolean;
+    canOrderTests: boolean;
+    canInviteGuardians: boolean;
+    canInviteClinicians: boolean;
+    canViewAuditLogs: boolean;
+    canExportData: boolean;
+  };
+  admin: {
+    canManageAllUsers: boolean;
+    canManageAllPatients: boolean;
+    canManageAllRecords: boolean;
+    canManageSystemSettings: boolean;
+    canViewAllAuditLogs: boolean;
+    canExportAllData: boolean;
+    canManageRoles: boolean;
+    canManagePermissions: boolean;
+    canResetPasswords: boolean;
+    canDeactivateUsers: boolean;
+    canRunReports: boolean;
+    canManageBilling: boolean;
+  };
+}
+
+// ========== NEW: GROWTH TREND TYPES ==========
+export interface GrowthTrends {
+  heightTrend: 'increasing' | 'decreasing' | 'stable';
+  weightTrend: 'increasing' | 'decreasing' | 'stable';
+  bmiTrend: 'increasing' | 'decreasing' | 'stable';
+  lastMeasurementDate?: Date;
+}
+
+export interface GrowthChartDataWithTrends extends GrowthChartData {
+  trend?: GrowthTrends;
+}
+
+// ========== NEW: ADMIN MANAGEMENT QUERY TYPES ==========
+export interface AdminActivityLogsQuery {
+  limit?: number;
+  lastDoc?: any; // QueryDocumentSnapshot type from Firestore
+  action?: string;
+  startDate?: Date;
+  endDate?: Date;
+  userId?: string;
+}
+
+export interface AdminUserQuery {
+  search?: string;
+  role?: UserRole;
+  isActive?: boolean;
+  isVerified?: boolean;
+  createdAfter?: Date;
+  createdBefore?: Date;
+  hasPatients?: boolean;
+  sortBy?: 'name' | 'email' | 'createdAt' | 'lastLogin';
+  sortOrder?: 'asc' | 'desc';
+  limit?: number;
+  offset?: number;
+}
+
+export interface AdminAuditFilter {
+  startDate?: Date;
+  endDate?: Date;
+  userId?: string;
+  userRole?: UserRole;
+  action?: string;
+  resourceType?: string;
+  limit?: number;
+  offset?: number;
+}
+
+export interface BulkUserAction {
+  userIds: string[];
+  action: 'activate' | 'deactivate' | 'verify' | 'sendWelcomeEmail' | 'resetPassword';
+  reason?: string;
+  notifyUsers?: boolean;
+}
+
+// ========== NEW: ADMIN REPORT TYPES ==========
+export interface AdminReport {
+  id: string;
+  type: 'user_activity' | 'patient_growth' | 'system_usage' | 'compliance' | 'custom';
+  title: string;
+  description?: string;
+  data: any;
+  generatedAt: Date;
+  generatedBy: string;
+  dateRange: {
+    start: Date;
+    end: Date;
+  };
+  format: 'json' | 'csv' | 'pdf';
+  downloadUrl?: string;
+}
+
+export interface AdminUserStats {
+  totalUsers: number;
+  activeUsers: number;
+  newUsersLast7Days: number;
+  usersByRole: Record<UserRole, number>;
+  pendingVerifications: number;
+  userActivityRate: number;
+}
+
+export interface AdminPatientStats {
+  totalPatients: number;
+  activePatients: number;
+  newPatientsLast30Days: number;
+  averagePatientsPerGuardian: number;
+  averagePatientsPerClinician: number;
+  patientsByStatus: Record<PatientStatus, number>;
+  patientsByGrowthStatus: Record<GrowthStatus, number>;
+}
+
+// ========== NEW: UTILITY TYPES ==========
+export type QueryDocumentSnapshot = any; // You'll need to import the actual type from firebase/firestore
+
+export type UserWithActivity = UserProfile & {
+  lastActivity?: Date;
+  activityCount?: number;
+  patientsCount?: number;
+};
+
+export interface UserSearchResult {
+  users: UserProfile[];
+  total: number;
+  hasMore: boolean;
+}
+
+export interface BulkOperationResult {
+  success: number;
+  failed: number;
+  errors: Array<{
+    userId: string;
+    error: string;
+  }>;
+}
+
+// ========== TYPE GUARDS ==========
+
+// User Profile Type Guards
+export function isUserProfile(obj: any): obj is UserProfile {
+  return obj && typeof obj === 'object' && 'uid' in obj && 'role' in obj;
 }
 
 export function isGuardianProfile(profile: UserProfile): boolean {
@@ -974,22 +1344,82 @@ export function isAdminProfile(profile: UserProfile): boolean {
   return profile.role === 'admin';
 }
 
+// Patient Type Guards
+export function isHealthcarePatient(obj: any): obj is HealthcarePatient {
+  return obj && typeof obj === 'object' && 'medicalRecordNumber' in obj && 'clinicianIds' in obj;
+}
+
 export function isPatientBase(obj: any): obj is PatientBase {
   return obj && typeof obj === 'object' && 'name' in obj && 'dob' in obj && 'guardianIds' in obj;
 }
 
+// New Type Guards
+export function isAdminCreateUserData(obj: any): obj is AdminCreateUserData {
+  return obj && typeof obj === 'object' && 
+    'adminId' in obj && 
+    'email' in obj && 
+    'password' in obj && 
+    'name' in obj && 
+    'role' in obj;
+}
+
+export function isUserCreationResponse(obj: any): obj is UserCreationResponse {
+  return obj && typeof obj === 'object' && 
+    'userId' in obj && 
+    'email' in obj && 
+    'name' in obj && 
+    'role' in obj && 
+    'createdAt' in obj;
+}
+
+export function isBulkUserCreationResult(obj: any): obj is BulkUserCreationResult {
+  return obj && typeof obj === 'object' && 
+    'success' in obj && 
+    'failed' in obj && 
+    'results' in obj;
+}
+
+export function isGrowthTrends(obj: any): obj is GrowthTrends {
+  return obj && typeof obj === 'object' && 
+    'heightTrend' in obj && 
+    'weightTrend' in obj && 
+    'bmiTrend' in obj;
+}
+
+export function isBulkOperationResult(obj: any): obj is BulkOperationResult {
+  return obj && typeof obj === 'object' && 
+    'success' in obj && 
+    'failed' in obj && 
+    'errors' in obj;
+}
+
+export function isUserValidationResult(obj: any): obj is UserValidationResult {
+  return obj && typeof obj === 'object' && 
+    'email' in obj && 
+    'password' in obj && 
+    'name' in obj && 
+    'overall' in obj;
+}
+
+// ========== PERMISSION CHECK FUNCTIONS ==========
 export function hasAdminPermission(profile: UserProfile | null, permission: keyof UserPermissions): boolean {
   if (!profile) return false;
   if (isAdminProfile(profile)) return true;
   return profile.permissions?.[permission] || false;
 }
 
+export function hasPermission(profile: UserProfile | null, permission: keyof UserPermissions): boolean {
+  if (!profile) return false;
+  if (isAdminProfile(profile)) return true;
+  return profile.permissions?.[permission] || false;
+}
+
 export function canManageUsers(profile: UserProfile | null): boolean {
-  return hasAdminPermission(profile, 'canManageUsers');
+  return hasPermission(profile, 'canManageUsers');
 }
 
 export function canViewAuditLogs(profile: UserProfile | null): boolean {
-  return hasAdminPermission(profile, 'canViewAuditLogs');
+  return hasPermission(profile, 'canViewAuditLogs');
 }
 
 export function isActiveUser(profile: UserProfile | null): boolean {
@@ -1000,21 +1430,161 @@ export function isVerifiedUser(profile: UserProfile | null): boolean {
   return profile?.isVerified === true;
 }
 
-export function hasPermission(profile: UserProfile | null, permission: keyof UserPermissions): boolean {
-  if (!profile) return false;
-  if (isAdminProfile(profile)) return true;
-  return profile.permissions?.[permission] || false;
+// New Permission Functions
+export function canCreateUser(profile: UserProfile | null): boolean {
+  return profile ? hasPermission(profile, 'canManageUsers') : false;
 }
 
-// In app.types.ts - Update AuditLog interface
-export interface AuditLog extends BaseEntity {
-  userId: string;
-  action: string;
-  targetUserId: string; // Changed from optional to required
-  details?: string;
-  metadata?: Record<string, any>;
-  ipAddress?: string;
-  userAgent?: string;
-  createdAt: Date;
-  updatedAt: Date;
+export function canResetPassword(profile: UserProfile | null): boolean {
+  return profile ? hasPermission(profile, 'canManageUsers') : false;
+}
+
+export function canDeactivateUser(profile: UserProfile | null, targetUserId: string): boolean {
+  if (!profile || profile.uid === targetUserId) return false;
+  return hasPermission(profile, 'canManageUsers');
+}
+
+export function canViewAdminDashboard(profile: UserProfile | null): boolean {
+  return profile ? isAdminProfile(profile) : false;
+}
+
+export function canManageAllPatients(profile: UserProfile | null): boolean {
+  return profile ? hasPermission(profile, 'canManagePatients') : false;
+}
+
+// ========== UTILITY FUNCTIONS ==========
+export function getDefaultPermissionsForRole(role: UserRole): Partial<UserPermissions> {
+  switch (role) {
+    case 'admin':
+      return {
+        canManagePatients: true,
+        canManageAppointments: true,
+        canViewMedicalRecords: true,
+        canEditMedicalRecords: true,
+        canManageUsers: true,
+        canViewAuditLogs: true,
+        canManageSystemSettings: true,
+        canSendNotifications: true,
+        canExportData: true
+      };
+    case 'clinician':
+      return {
+        canManagePatients: true,
+        canManageAppointments: true,
+        canViewMedicalRecords: true,
+        canEditMedicalRecords: true,
+        canManageUsers: false,
+        canViewAuditLogs: false,
+        canManageSystemSettings: false,
+        canSendNotifications: true,
+        canExportData: true
+      };
+    case 'guardian':
+      return {
+        canManagePatients: false,
+        canManageAppointments: false,
+        canViewMedicalRecords: true,
+        canEditMedicalRecords: false,
+        canManageUsers: false,
+        canViewAuditLogs: false,
+        canManageSystemSettings: false,
+        canSendNotifications: false,
+        canExportData: false
+      };
+    default:
+      return {};
+  }
+}
+
+export function validateUserRole(role: string): role is UserRole {
+  return ['guardian', 'clinician', 'admin'].includes(role);
+}
+
+export function generateTempPassword(length: number = 12): string {
+  const uppercase = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
+  const lowercase = 'abcdefghijklmnopqrstuvwxyz';
+  const numbers = '0123456789';
+  const special = '!@#$%^&*()-_=+[]{}|;:,.<>?';
+  
+  let password = '';
+  
+  // Ensure at least one of each type
+  password += uppercase[Math.floor(Math.random() * uppercase.length)];
+  password += lowercase[Math.floor(Math.random() * lowercase.length)];
+  password += numbers[Math.floor(Math.random() * numbers.length)];
+  password += special[Math.floor(Math.random() * special.length)];
+  
+  // Fill the rest
+  const allChars = uppercase + lowercase + numbers + special;
+  for (let i = 4; i < length; i++) {
+    password += allChars[Math.floor(Math.random() * allChars.length)];
+  }
+  
+  // Shuffle
+  return password.split('').sort(() => Math.random() - 0.5).join('');
+}
+
+export function calculatePasswordStrength(password: string): {
+  score: number;
+  strength: 'very_weak' | 'weak' | 'medium' | 'strong' | 'very_strong';
+} {
+  let score = 0;
+  
+  // Length
+  if (password.length >= 8) score += 20;
+  if (password.length >= 12) score += 20;
+  if (password.length >= 16) score += 10;
+  
+  // Character variety
+  if (/[A-Z]/.test(password)) score += 10;
+  if (/[a-z]/.test(password)) score += 10;
+  if (/[0-9]/.test(password)) score += 10;
+  if (/[^A-Za-z0-9]/.test(password)) score += 10;
+  
+  // Deduct for patterns
+  if (/(.)\1{2,}/.test(password)) score -= 10; // Repeated characters
+  if (/^\d+$/.test(password)) score -= 20; // All numbers
+  if (/^[a-zA-Z]+$/.test(password)) score -= 20; // All letters
+  
+  // Normalize to 0-100
+  score = Math.max(0, Math.min(100, score));
+  
+  let strength: 'very_weak' | 'weak' | 'medium' | 'strong' | 'very_strong';
+  if (score < 30) strength = 'very_weak';
+  else if (score < 50) strength = 'weak';
+  else if (score < 70) strength = 'medium';
+  else if (score < 90) strength = 'strong';
+  else strength = 'very_strong';
+  
+  return { score, strength };
+}
+
+
+
+// ========== GET USERS BY ROLE TYPES ==========
+export interface GetUsersByRoleOptions {
+  limit?: number;
+  lastDoc?: QueryDocumentSnapshot;
+  includeInactive?: boolean;
+  includeDeleted?: boolean;
+  sortBy?: 'name' | 'email' | 'createdAt' | 'lastLogin';
+  sortOrder?: 'asc' | 'desc';
+}
+
+export interface GetUsersByRoleResponse extends PaginatedResponse<UserProfile> {
+  role: UserRole;
+  filteredCount: number;
+}
+
+
+// ========== TYPE GUARD ==========
+export function isGetUsersByRoleOptions(obj: any): obj is GetUsersByRoleOptions {
+  return obj && typeof obj === 'object' && (
+    'limit' in obj ||
+    'lastDoc' in obj ||
+    'includeInactive' in obj ||
+    'includeDeleted' in obj ||
+    'sortBy' in obj ||
+    'sortOrder' in obj
+  );
 }

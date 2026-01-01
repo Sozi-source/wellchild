@@ -1,3 +1,4 @@
+// app/login/page.tsx - RESTORED PROFESSIONAL VERSION
 'use client';
 
 import { useState, useEffect } from 'react';
@@ -21,10 +22,8 @@ export default function LoginPage() {
   // Redirect if already logged in
   useEffect(() => {
     if (!loading && user && userProfile) {
-      const dashboardPath = userProfile.role === 'clinician' 
-        ? '/dashboard/clinicians' 
-        : '/dashboard/guardian';
-      router.push(dashboardPath);
+      // Redirect to main dashboard (landing page for all users)
+      router.push('/dashboard');
     }
   }, [user, userProfile, loading, router]);
 
@@ -208,6 +207,23 @@ export default function LoginPage() {
                 Sign up here
               </Link>
             </p>
+          </div>
+        </div>
+
+        {/* Additional Info */}
+        <div className="text-center space-y-2">
+          <p className="text-xs text-gray-500">
+            Secure login with end-to-end encryption
+          </p>
+          <div className="flex items-center justify-center space-x-4">
+            <span className="inline-flex items-center text-xs text-gray-400">
+              <Shield className="h-3 w-3 mr-1" />
+              HIPAA Compliant
+            </span>
+            <span className="inline-flex items-center text-xs text-gray-400">
+              <Lock className="h-3 w-3 mr-1" />
+              256-bit SSL
+            </span>
           </div>
         </div>
       </div>

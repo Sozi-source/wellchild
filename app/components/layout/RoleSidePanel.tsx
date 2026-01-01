@@ -1,4 +1,4 @@
-// app/components/layout/RoleSidePanel.tsx
+// app/components/layout/RoleSidePanel.tsx - UPDATED WITH FIXED CLINICIAN PATHS
 "use client";
 
 import { useState } from 'react';
@@ -39,6 +39,14 @@ export default function RoleSidePanel() {
 
   if (!userProfile) return null;
 
+  // Helper function to get correct path based on role
+  const getRolePath = (pathSuffix = '') => {
+    if (userProfile.role === 'clinician') {
+      return `/dashboard/clinicians${pathSuffix}`; // Use plural for clinicians folder
+    }
+    return `/dashboard/${userProfile.role}${pathSuffix}`; // Use singular for guardian/admin
+  };
+
   // Role-based navigation items
   const getNavigationItems = () => {
     const baseItems = [
@@ -46,14 +54,14 @@ export default function RoleSidePanel() {
         id: 'dashboard',
         label: 'Dashboard',
         icon: <Home className="h-5 w-5" />,
-        path: `/dashboard/${userProfile.role}`,
+        path: getRolePath(), // Use helper function
         roles: ['guardian', 'clinician', 'admin']
       },
       {
         id: 'notifications',
         label: 'Notifications',
         icon: <Bell className="h-5 w-5" />,
-        path: `/dashboard/${userProfile.role}/notifications`,
+        path: getRolePath('/notifications'), // Use helper function
         badge: 3,
         roles: ['guardian', 'clinician', 'admin']
       }
@@ -95,13 +103,13 @@ export default function RoleSidePanel() {
           id: 'health-records',
           label: 'Health Records',
           icon: <FileText className="h-5 w-5" />,
-          path: '/dashbpard/guardian/records',
+          path: '/dashboard/guardian/records',
           roles: ['guardian']
         }
       ];
     }
 
-    // Clinician-specific items
+    // Clinician-specific items - ALL use plural 'clinicians'
     if (userProfile.role === 'clinician') {
       return [
         ...baseItems,
@@ -109,35 +117,35 @@ export default function RoleSidePanel() {
           id: 'patients',
           label: 'My Patients',
           icon: <Users className="h-5 w-5" />,
-          path: '/dashboard/clinicians/children',
+          path: '/dashboard/clinicians/patients',
           roles: ['clinician']
         },
         {
           id: 'appointments',
           label: 'Appointments',
           icon: <Calendar className="h-5 w-5" />,
-          path: '/dashboard/clinician/appointments',
+          path: '/dashboard/clinicians/appointments',
           roles: ['clinician']
         },
         {
           id: 'medical-records',
           label: 'Medical Records',
           icon: <ClipboardList className="h-5 w-5" />,
-          path: '/dashboard/clinician/medical-records',
+          path: '/dashboard/clinicians/medical-records',
           roles: ['clinician']
         },
         {
           id: 'prescriptions',
           label: 'Prescriptions',
           icon: <Pill className="h-5 w-5" />,
-          path: '/dashboard/clinician/prescriptions',
+          path: '/dashboard/clinicians/prescriptions',
           roles: ['clinician']
         },
         {
           id: 'analytics',
           label: 'Analytics',
           icon: <Activity className="h-5 w-5" />,
-          path: '/dashboard/clinician/analytics',
+          path: '/dashboard/clinicians/analytics',
           roles: ['clinician']
         }
       ];
@@ -147,21 +155,7 @@ export default function RoleSidePanel() {
     if (userProfile.role === 'admin') {
       return [
         ...baseItems,
-        {
-          id: 'users',
-          label: 'User Management',
-          icon: <Users className="h-5 w-5" />,
-          path: '/dashboard/admin/users',
-          roles: ['admin']
-        },
-        // {
-        //   id: 'patients',
-        //   label: 'All Patients',
-        //   icon: <Baby className="h-5 w-5" />,
-        //   path: '/dashboard/admin/patients',
-        //   roles: ['admin']
-        // },
-        {
+               {
           id: 'clinicians',
           label: 'Clinicians',
           icon: <Stethoscope className="h-5 w-5" />,
@@ -186,14 +180,14 @@ export default function RoleSidePanel() {
           id: 'audit',
           label: 'Audit Logs',
           icon: <Shield className="h-5 w-5" />,
-          path: '/admin/audit',
+          path: '/dashboard/admin/audit',
           roles: ['admin']
         },
         {
           id: 'reports',
           label: 'Reports',
           icon: <BarChart3 className="h-5 w-5" />,
-          path: '/admin/reports',
+          path: '/dashboard/admin/reports',
           roles: ['admin']
         }
       ];
@@ -232,7 +226,7 @@ export default function RoleSidePanel() {
         };
       case 'clinician':
         return {
-          bgColor: 'bg-green-800',
+          bgColor: 'bg-teal-700',
           textColor: 'text-green-100',
           borderColor: 'border-green-700',
           hoverBg: 'hover:bg-green-700',
@@ -364,6 +358,19 @@ export default function RoleSidePanel() {
           "border-t p-4 space-y-2",
           roleStyles.borderColor
         )}>
+          {/* Add Dashboard Home Button */}
+          <button
+            onClick={() => router.push('/dashboard')}
+            className={cn(
+              "w-full flex items-center rounded-lg px-3 py-2.5 text-sm font-medium transition-colors",
+              collapsed ? "justify-center" : "justify-start space-x-3",
+              roleStyles.hoverBg
+            )}
+          >
+            <Home className="h-5 w-5" />
+            {!collapsed && <span>Main Dashboard</span>}
+          </button>
+
           {/* Help & Support */}
           <button
             onClick={() => router.push('/help')}

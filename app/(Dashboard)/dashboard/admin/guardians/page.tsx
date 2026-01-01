@@ -31,7 +31,7 @@ export default function AdminGuardiansPage() {
   };
 
   const handleViewGuardian = (guardianId: string) => {
-    router.push(`/admin/guardians/${guardianId}`);
+    router.push(`/dashboard/admin/guardians/${guardianId}`);
   };
 
   const handleCreateGuardian = () => {
@@ -143,7 +143,7 @@ export default function AdminGuardiansPage() {
                           variant="outline"
                           size="sm"
                           className="flex-1"
-                          onClick={() => router.push(`/admin/users/${guardian.id}/edit`)}
+                          onClick={() => router.push(`/dashboard/admin/users/${guardian.id}/edit`)}
                         >
                           Edit
                         </Button>

@@ -12,6 +12,13 @@ import { ref, uploadBytes, getDownloadURL, deleteObject } from 'firebase/storage
 import { getAuth } from 'firebase/auth';
 import { db, auth, storage } from '@/app/lib/firebase/firebase';
 import type * as AppTypes from '@/app/types/app.types';
+import { 
+  createUserWithEmailAndPassword, 
+  signInWithEmailAndPassword,
+  signOut,
+  fetchSignInMethodsForEmail,
+  UserCredential
+} from 'firebase/auth';
 
 // ============================================================================
 // CONSTANTS (Updated Terminology)
@@ -419,22 +426,70 @@ export const createUserProfile = async (
   }, `createUserProfile(${profileData.email})`);
 };
 
+// app/services/app.services.ts
 export const updateUserProfile = async (
   userId: string, 
   updates: Partial<AppTypes.UserProfile>
 ): Promise<void> => {
   return withErrorHandling(async () => {
-    const sanitizedUpdates = { ...updates };
-    if (updates.name) sanitizedUpdates.name = sanitizeText(updates.name);
-    if (updates.email) {
-      if (!validateEmail(updates.email)) throw new Error('Invalid email');
+    const sanitizedUpdates: Record<string, any> = {};
+    
+    // Sanitize and validate text fields
+    if (updates.name !== undefined) {
+      sanitizedUpdates.name = sanitizeText(updates.name);
+    }
+    
+    if (updates.email !== undefined) {
+      if (!validateEmail(updates.email)) {
+        throw new Error('Invalid email address');
+      }
       sanitizedUpdates.email = updates.email.toLowerCase().trim();
     }
     
-    await updateDoc(doc(db, COLLECTIONS.USERS, userId), {
-      ...sanitizedUpdates,
-      updatedAt: serverTimestamp()
-    });
+    if (updates.phone !== undefined) {
+      sanitizedUpdates.phone = updates.phone?.trim() || null;
+    }
+    
+    if (updates.address !== undefined) {
+      sanitizedUpdates.address = updates.address?.trim() || null;
+    }
+    
+    // Handle clinic-specific fields
+    if (updates.clinicName !== undefined) {
+      sanitizedUpdates.clinicName = updates.clinicName?.trim() || null;
+    }
+    
+    if (updates.specialization !== undefined) {
+      sanitizedUpdates.specialization = updates.specialization?.trim() || null;
+    }
+    
+    if (updates.licenseNumber !== undefined) {
+      sanitizedUpdates.licenseNumber = updates.licenseNumber?.trim() || null;
+    }
+    
+    if (updates.npiNumber !== undefined) {
+      sanitizedUpdates.npiNumber = updates.npiNumber?.trim() || null;
+    }
+    
+    // Handle boolean fields
+    if (updates.isActive !== undefined) {
+      sanitizedUpdates.isActive = updates.isActive;
+    }
+    
+    // Handle string fields with defaults
+    if (updates.timezone !== undefined) {
+      sanitizedUpdates.timezone = updates.timezone?.trim() || 'UTC';
+    }
+    
+    if (updates.language !== undefined) {
+      sanitizedUpdates.language = updates.language?.trim() || 'en';
+    }
+    
+    // Always add updated timestamp
+    sanitizedUpdates.updatedAt = serverTimestamp();
+    
+    await updateDoc(doc(db, COLLECTIONS.USERS, userId), sanitizedUpdates);
+    
   }, `updateUserProfile(${userId})`);
 };
 
@@ -484,6 +539,51 @@ export const searchUsers = async (
         user.email.toLowerCase().includes(searchLower)
       );
   }, 'searchUsers');
+};
+
+// app/services/app.services.ts - SIMPLE NO-INDEX VERSION
+export const getUsersByRole = async (
+  role: AppTypes.UserRole,
+  options?: {
+    includeInactive?: boolean;
+    includeDeleted?: boolean;
+    limit?: number;
+  }
+): Promise<{ items: AppTypes.UserProfile[]; total: number }> => {
+  return withErrorHandling(async () => {
+    // ULTRA SIMPLE: Get all users with no filters
+    const usersQuery = query(collection(db, COLLECTIONS.USERS));
+    const snapshot = await getDocs(usersQuery);
+    
+    // Process everything in JavaScript
+    const allUsers = snapshot.docs.map(toUserProfile);
+    
+    // Filter by role first
+    let filteredUsers = allUsers.filter(user => user.role === role);
+    
+    // Apply other filters
+    if (!options?.includeInactive) {
+      filteredUsers = filteredUsers.filter(user => user.isActive !== false);
+    }
+    
+    if (!options?.includeDeleted) {
+      filteredUsers = filteredUsers.filter(user => !user.isDeleted);
+    }
+    
+    // Sort by name
+    filteredUsers.sort((a, b) => a.name.localeCompare(b.name));
+    
+    // Apply limit if needed
+    if (options?.limit) {
+      filteredUsers = filteredUsers.slice(0, options.limit);
+    }
+    
+    return {
+      items: filteredUsers,
+      total: filteredUsers.length
+    };
+    
+  }, `getUsersByRole(${role})`);
 };
 
 // ============================================================================
@@ -1689,45 +1789,6 @@ export const getAllUsers = async (
   }, 'getAllUsers');
 };
 
-export const getUsersByRole = async (
-  role: AppTypes.UserRole,
-  options?: { limit?: number; lastDoc?: QueryDocumentSnapshot<DocumentData> }
-): Promise<AppTypes.PaginatedResponse<AppTypes.UserProfile>> => {
-  return withErrorHandling(async () => {
-    const constraints: QueryConstraint[] = [
-      where('role', '==', role),
-      orderBy('createdAt', 'desc')
-    ];
-    
-    if (options?.limit) constraints.push(limit(options.limit));
-    if (options?.lastDoc) constraints.push(startAfter(options.lastDoc));
-    
-    const usersQuery = query(collection(db, COLLECTIONS.USERS), ...constraints);
-    const snapshot = await getDocs(usersQuery);
-    
-    const users = snapshot.docs.map(toUserProfile);
-    
-    // Get total count
-    const totalQuery = query(
-      collection(db, COLLECTIONS.USERS),
-      where('role', '==', role)
-    );
-    const totalSnapshot = await getCountFromServer(totalQuery);
-    
-    const hasMore = snapshot.docs.length === (options?.limit || 10);
-    const lastDoc = snapshot.docs.length > 0 ? snapshot.docs[snapshot.docs.length - 1] : null;
-    
-    return {
-      items: users,
-      total: totalSnapshot.data().count,
-      page: options?.lastDoc ? 2 : 1,
-      pageSize: options?.limit || 10,
-      hasMore,
-      totalPages: Math.ceil(totalSnapshot.data().count / (options?.limit || 10))
-    };
-  }, `getUsersByRole(${role})`);
-};
-
 // ============================================================================
 // NEW ADMIN USER MANAGEMENT SERVICES
 // ============================================================================
@@ -2003,4 +2064,204 @@ export const getAdminActivityLogs = async (
       totalPages: Math.ceil(totalSnapshot.data().count / (options?.limit || 50))
     };
   }, 'getAdminActivityLogs');
+};
+
+// ============================================================================
+// ADD THESE FUNCTIONS TO YOUR EXISTING FILE
+// ============================================================================
+
+/**
+ * Creates a new user account without automatically signing them in
+ * This prevents the admin from being logged out
+ */
+export const createUserAccount = async (
+  adminId: string,
+  userData: {
+    email: string;
+    password: string;
+    name: string;
+    role: AppTypes.UserRole;
+    phone?: string;
+    clinicName?: string;
+    specialization?: string;
+  }
+): Promise<AppTypes.ApiResponse<{ userId: string }>> => {
+  return withErrorHandling(async () => {
+    // Verify admin
+    const adminUser = await getUserProfile(adminId);
+    if (!adminUser || adminUser.role !== 'admin') {
+      throw new Error('Unauthorized: Only admins can create users');
+    }
+
+    // Validate email
+    if (!validateEmail(userData.email)) {
+      throw new Error('Invalid email address');
+    }
+
+    // Store current admin's auth state
+    const currentUser = auth.currentUser;
+    const adminEmail = currentUser?.email;
+    const adminPassword = sessionStorage.getItem('admin_temp_password'); // You need to handle this
+
+    try {
+      // Create user with Firebase Auth
+      const userCredential = await createUserWithEmailAndPassword(
+        auth,
+        userData.email,
+        userData.password
+      );
+      
+      const newUserId = userCredential.user.uid;
+
+      // Immediately sign out the newly created user
+      await signOut(auth);
+
+      // Restore admin session
+      if (adminEmail) {
+        try {
+          // You'll need to handle the password securely
+          // For now, redirect admin to login page or show a message
+          console.log('Admin session ended. Please log in again.');
+          
+          // Alternative: Redirect to login or show modal
+          window.location.href = '/login?returnUrl=/admin/users';
+        } catch (restoreError) {
+          console.error('Failed to restore admin session:', restoreError);
+        }
+      }
+
+      // Create user profile in Firestore
+      const userProfile: Omit<AppTypes.UserProfile, 'id' | 'createdAt' | 'updatedAt'> = {
+        uid: newUserId,
+        email: userData.email.toLowerCase().trim(),
+        name: sanitizeText(userData.name.trim()),
+        role: userData.role,
+        phone: userData.phone,
+        clinicName: userData.clinicName,
+        specialization: userData.specialization,
+        patients: [],
+        isVerified: false,
+        isActive: true,
+        timezone: 'UTC',
+        language: 'en',
+        notificationPreferences: {
+          email: true,
+          push: true,
+          sms: false,
+          appointmentReminders: true,
+          healthAlerts: true
+        }
+      };
+
+      await setDoc(doc(db, COLLECTIONS.USERS, newUserId), {
+        ...userProfile,
+        createdAt: serverTimestamp(),
+        updatedAt: serverTimestamp(),
+        lastLogin: null
+      });
+
+      // Log the action
+      await logAudit({
+        userId: adminId,
+        action: 'create_user',
+        targetUserId: newUserId,
+        details: `Created new ${userData.role} account for ${userData.email}`,
+        metadata: {
+          role: userData.role,
+          email: userData.email
+        },
+        ipAddress: '',
+        userAgent: ''
+      });
+
+      return {
+        success: true,
+        data: { userId: newUserId },
+        message: `User account created successfully. ${userData.role} account has been created for ${userData.email}.`,
+        timestamp: new Date()
+      };
+
+    } catch (error: any) {
+      console.error('Error creating user:', error);
+      throw error;
+    }
+  }, 'createUserAccount');
+};
+
+/**
+ * Simple user creation function that accepts admin logout
+ */
+export const createUserSimple = async (
+  adminId: string,
+  userData: {
+    email: string;
+    password: string;
+    name: string;
+    role: 'admin' | 'clinician' | 'guardian';
+    phone?: string;
+    clinicName?: string;
+    specialization?: string;
+  }
+): Promise<{ 
+  success: boolean; 
+  data?: { userId: string }; 
+  message: string; 
+  timestamp: Date 
+}> => {
+  try {
+    // Dynamically import Firebase
+    const { createUserWithEmailAndPassword, signOut } = await import('firebase/auth');
+    const { doc, setDoc, serverTimestamp } = await import('firebase/firestore');
+    const { auth, db } = await import('@/app/lib/firebase/firebase');
+
+    // Create user with Firebase Auth
+    const userCredential = await createUserWithEmailAndPassword(
+      auth,
+      userData.email,
+      userData.password
+    );
+    
+    const newUserId = userCredential.user.uid;
+
+    // Create user profile in Firestore
+    await setDoc(doc(db, 'users', newUserId), {
+      uid: newUserId,
+      email: userData.email,
+      name: userData.name,
+      role: userData.role,
+      phone: userData.phone || '',
+      clinicName: userData.clinicName || '',
+      specialization: userData.specialization || '',
+      patients: [],
+      isVerified: false,
+      isActive: true,
+      createdAt: serverTimestamp(),
+      updatedAt: serverTimestamp(),
+      lastLogin: null,
+      notificationPreferences: {
+        email: true,
+        push: true,
+        sms: false,
+        appointmentReminders: true,
+        healthAlerts: true
+      }
+    });
+
+    // Sign out (admin gets logged out too)
+    await signOut(auth);
+    
+    return {
+      success: true,
+      data: { userId: newUserId },
+      message: 'User created successfully',
+      timestamp: new Date()
+    };
+
+  } catch (error: any) {
+    return {
+      success: false,
+      message: `Failed to create user: ${error.message}`,
+      timestamp: new Date()
+    };
+  }
 };

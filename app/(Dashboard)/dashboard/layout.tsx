@@ -32,13 +32,13 @@ export default function DashboardLayout({
         {showSidePanel && <RoleSidePanel />}
         
         <div className={showSidePanel ? 'lg:pl-64' : ''}>
-          {showHeader && (
+          {/* {showHeader && (
             <DashboardHeader 
               title={title}
               subtitle={subtitle}
               actions={headerActions}
             />
-          )}
+          )} */}
           
           <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
             {children}

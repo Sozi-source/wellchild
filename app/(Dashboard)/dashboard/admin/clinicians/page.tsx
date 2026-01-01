@@ -13,6 +13,7 @@ export default function AdminCliniciansPage() {
   const router = useRouter();
   const [clinicians, setClinicians] = useState<UserProfile[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     loadClinicians();
@@ -21,21 +22,42 @@ export default function AdminCliniciansPage() {
   const loadClinicians = async () => {
     try {
       setLoading(true);
+      setError(null);
+      
       const response = await AppServices.getUsersByRole('clinician');
-      setClinicians(response.items);
+      
+      if (response && response.items) {
+        setClinicians(response.items);
+      } else {
+        setError('Unexpected response format');
+      }
+      
     } catch (error) {
       console.error('Error loading clinicians:', error);
+      setError(error instanceof Error ? error.message : 'Failed to load clinicians');
+      
+      // Fallback to getAllUsers if getUsersByRole fails
+      try {
+        const allUsers = await AppServices.getAllUsers();
+        
+        if (allUsers && allUsers.items) {
+          const cliniciansOnly = allUsers.items.filter(user => user.role === 'clinician');
+          setClinicians(cliniciansOnly);
+        }
+      } catch (fallbackError) {
+        console.error('Fallback also failed:', fallbackError);
+      }
     } finally {
       setLoading(false);
     }
   };
 
   const handleViewClinician = (clinicianId: string) => {
-    router.push(`/admin/clinicians/${clinicianId}`);
+    router.push(`/dashboard/admin/clinicians/${clinicianId}`);
   };
 
   const handleCreateClinician = () => {
-    router.push('/admin/users/new?role=clinician');
+    router.push('/dashboard/admin/users/new?role=clinician');
   };
 
   if (loading) {
@@ -62,6 +84,22 @@ export default function AdminCliniciansPage() {
             Create New Clinician
           </Button>
         </div>
+
+        {error && (
+          <div className="mb-6 p-4 bg-red-50 border border-red-200 rounded-md">
+            <div className="flex items-center">
+              <div className="flex-shrink-0">
+                <svg className="h-5 w-5 text-red-400" viewBox="0 0 20 20" fill="currentColor">
+                  <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
+                </svg>
+              </div>
+              <div className="ml-3">
+                <h3 className="text-sm font-medium text-red-800">Error</h3>
+                <p className="mt-1 text-sm text-red-700">{error}</p>
+              </div>
+            </div>
+          </div>
+        )}
 
         <Card>
           <CardHeader>
@@ -125,7 +163,7 @@ export default function AdminCliniciansPage() {
                           <span>{clinician.licenseNumber || 'Not specified'}</span>
                         </div>
                         <div className="flex justify-between">
-                          <span className="text-gray-600">Children:</span>
+                          <span className="text-gray-600">Patients:</span>
                           <span>{clinician.patients?.length || 0}</span>
                         </div>
                       </div>
@@ -143,7 +181,7 @@ export default function AdminCliniciansPage() {
                           variant="outline"
                           size="sm"
                           className="flex-1"
-                          onClick={() => router.push(`/admin/users/${clinician.id}/edit`)}
+                          onClick={() => router.push(`/dashboard/admin/users/${clinician.id}/edit`)}
                         >
                           Edit
                         </Button>

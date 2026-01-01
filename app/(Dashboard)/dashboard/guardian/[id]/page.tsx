@@ -8,7 +8,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/app/components/ui/Ca
 import { Button } from '@/app/components/ui/Button';
 import { Badge } from '@/app/components/ui/Badge';
 import LoadingSpinner from '@/app/components/common/LoadingSpinner';
-import Tabs from '@/app/components/common/Tabs';
+import Tabs from '@/app/components/ui/Tabs';
 import { StatsCard } from '@/app/components/common/StatsCard';
 import { useAuth } from '@/app/context/AuthContext';
 import * as AppServices from '@/app/services/app.services'; // Updated path
