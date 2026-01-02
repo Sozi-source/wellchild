@@ -39,12 +39,12 @@ export default function DashboardLayout({
 
   const getMarginBottom = () => {
     if (typeof mb === 'number') {
-      return `${mb * 0.25}rem`; // Convert number to rem (1 = 0.25rem)
+      return `${mb * 0.25}rem`; 
     }
     if (typeof mb === 'string' && mb.startsWith('mb-')) {
-      return ''; // Tailwind class will be applied via className
+      return ''; 
     }
-    return mb; // CSS string value
+    return mb; 
   };
 
   const marginBottomStyle = getMarginBottom();
@@ -71,7 +71,7 @@ export default function DashboardLayout({
                   onClick={() => setIsSidePanelOpen(false)}
                 />
                 <div className="fixed inset-y-0 left-0 z-50 w-64 bg-white">
-                  <RoleSidePanel onClose={() => setIsSidePanelOpen(false)} />
+                  <RoleSidePanel/>
                 </div>
               </div>
             )}

@@ -702,6 +702,7 @@ export interface PaginatedResponse<T> {
   
 }
 
+
 export interface CreateUserAccountResponse {
   userId: string;
   email: string;

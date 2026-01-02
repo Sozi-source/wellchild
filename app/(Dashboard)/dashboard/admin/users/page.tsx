@@ -16,8 +16,7 @@ import {
   ChevronRight, Mail, CheckCircle, XCircle, Download,
   RefreshCw, UserCog, Activity, Bell, Building,
   AlertCircle, Phone, TrendingUp, Eye, Filter,
-  Calendar, Clock, MapPin, FileText, BarChart3,
-  Mail as MailIcon
+  Calendar, Clock, MapPin, FileText, BarChart3
 } from 'lucide-react';
 
 // Use UserRole from AuthContext (should match AppTypes.UserRole)
@@ -61,14 +60,6 @@ const safeToDate = (dateValue: any): Date | undefined => {
   }
 };
 
-const isPaginatedResponse = (response: any): response is AppTypes.PaginatedResponse<any> => {
-  return response && typeof response === 'object' && 'items' in response && Array.isArray(response.items);
-};
-
-const isApiResponse = (response: any): response is AppTypes.ApiResponse<any> => {
-  return response && typeof response === 'object' && 'success' in response;
-};
-
 export default function AdminUsersPage() {
   const { userProfile: currentUserProfile } = useAuth();
   const router = useRouter();
@@ -103,29 +94,97 @@ export default function AdminUsersPage() {
 
       // Get all users using the service function
       const response = await AppServices.getAllUsers({ limit: 1000 });
-      console.log('Service response:', response);
+      console.log('Service response type:', typeof response, response);
 
       let userItems: any[] = [];
       
-      // Handle different response types
-      if (isPaginatedResponse(response)) {
-        userItems = response.items;
-      } else if (Array.isArray(response)) {
-        userItems = response;
-      } else if (isApiResponse(response) && response.data) {
-        if (Array.isArray(response.data)) {
-          userItems = response.data;
-        } else if (isPaginatedResponse(response.data)) {
-          userItems = response.data.items;
+      // SAFE response handling with proper type checking
+      if (response && typeof response === 'object') {
+        // First check if it's an ApiResponse
+        if ('success' in response && 'timestamp' in response) {
+          const apiResponse = response as unknown as AppTypes.ApiResponse<any>;
+          if (apiResponse.success && apiResponse.data) {
+            // Handle data from ApiResponse
+            const data = apiResponse.data;
+            if (Array.isArray(data)) {
+              userItems = data;
+              console.log('Extracted array from ApiResponse.data:', userItems.length);
+            } else if (data && typeof data === 'object') {
+              // Check if data is PaginatedResponse
+              if ('items' in data && Array.isArray(data.items)) {
+                userItems = data.items;
+                console.log('Extracted items from PaginatedResponse in ApiResponse:', userItems.length);
+              } else {
+                // Try to extract user data from object
+                userItems = [data];
+                console.log('Wrapped single object in array:', userItems.length);
+              }
+            }
+          } else {
+            console.warn('ApiResponse was not successful or has no data:', apiResponse);
+          }
+        } 
+        // Check if it's a PaginatedResponse directly
+        else if ('items' in response && Array.isArray(response.items)) {
+          userItems = response.items;
+          console.log('Extracted items from direct PaginatedResponse:', userItems.length);
         }
+        // Check if response itself is an array
+        else if (Array.isArray(response)) {
+          userItems = response;
+          console.log('Response is direct array:', userItems.length);
+        }
+        // Check if it's a DocumentSnapshot or similar
+        else if ('data' in response && typeof response.data === 'function') {
+          try {
+            const data = (response as any).data();
+            if (data && typeof data === 'object') {
+              userItems = [data];
+              console.log('Extracted data from DocumentSnapshot:', userItems.length);
+            }
+          } catch (error) {
+            console.error('Error extracting data from DocumentSnapshot:', error);
+          }
+        }
+      } else if (Array.isArray(response)) {
+        // Handle case where response is directly an array
+        userItems = response;
+        console.log('Response is directly an array:', userItems.length);
       } else {
         console.warn('Unexpected response format:', response);
-        userItems = [];
       }
 
-      // Map to AdminUser with proper type handling
+      // If no items found, try to extract from any possible structure
+      if (userItems.length === 0 && response) {
+        console.log('Attempting fallback extraction...');
+        // Try to stringify and parse to find arrays
+        try {
+          const responseStr = JSON.stringify(response);
+          const parsed = JSON.parse(responseStr);
+          
+          // Look for arrays in the parsed object
+          if (Array.isArray(parsed)) {
+            userItems = parsed;
+          } else if (parsed && typeof parsed === 'object') {
+            // Search for any array property
+            for (const key in parsed) {
+              if (Array.isArray(parsed[key])) {
+                userItems = parsed[key];
+                console.log('Found array in property:', key, userItems.length);
+                break;
+              }
+            }
+          }
+        } catch (error) {
+          console.error('Fallback extraction failed:', error);
+        }
+      }
+
+      console.log('Final user items count:', userItems.length);
+
+            // Map to AdminUser with proper type handling
       const adminUsers: AdminUser[] = userItems
-        .map((item: any, index: number) => {
+        .map((item: any, index: number): AdminUser | null => {
           try {
             let userData = item;
             
@@ -135,7 +194,7 @@ export default function AdminUsersPage() {
             }
             
             // If it's already a UserProfile type
-            if (item && typeof item === 'object' && 'uid' in item && 'email' in item) {
+            if (item && typeof item === 'object' && 'uid' in item) {
               userData = item;
             }
 
@@ -189,6 +248,8 @@ export default function AdminUsersPage() {
         })
         .filter((user): user is AdminUser => user !== null);
 
+            
+
       console.log('Loaded admin users:', adminUsers.length);
       console.log('Sample user:', adminUsers[0]);
 
@@ -210,19 +271,20 @@ export default function AdminUsersPage() {
         .slice(0, 5);
       setRecentUsers(recent);
 
-      // Get admin dashboard stats from service
+      // Get admin dashboard stats
       try {
         const adminStats = await AppServices.getAdminDashboardStats();
         console.log('Admin stats received:', adminStats);
         
+        // Use the stats from service, fallback to our calculations
         setStats({
           total,
-          clinicians,
-          guardians,
-          admins,
-          active,
-          inactive,
-          deleted,
+          clinicians: adminStats.totalClinicians || clinicians,
+          guardians: adminStats.totalGuardians || guardians,
+          admins: adminStats.totalAdmins || admins,
+          active: adminStats.activeUsers || active,
+          inactive: adminStats.inactiveUsers || inactive,
+          deleted: adminStats.deletedUsers || deleted,
           recentActivity: adminStats.recentActivity || 0,
           pendingInvites: adminStats.pendingInvitations || 0,
           totalPatients: adminStats.totalPatients || 0,
@@ -268,6 +330,7 @@ export default function AdminUsersPage() {
     }
   }, [currentUserProfile]);
 
+  // Load data on component mount
   useEffect(() => {
     if (currentUserProfile && currentUserProfile.role === 'admin') {
       loadDashboardData();
@@ -429,53 +492,55 @@ export default function AdminUsersPage() {
   return (
     <RoleProtectedLayout allowedRoles={['admin']}>
       <DashboardHeader
-        title="User Management"
-        subtitle="Manage clinicians, guardians, and administrators"
-        subtitleActions={
-          <div className="flex items-center space-x-4">
-            <div className="relative">
-              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
-              <input
-                type="text"
-                placeholder="Search users..."
-                className="pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent w-64"
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                aria-label="Search users"
-              />
-            </div>
-            <Button 
-              variant="outline" 
-              onClick={refreshData}
-              disabled={loading}
-              className="min-w-[120px]"
-            >
-              <RefreshCw className={`h-4 w-4 mr-2 ${loading ? 'animate-spin' : ''}`} />
-              {loading ? 'Refreshing...' : 'Refresh'}
-            </Button>
-          </div>
-        }
-        actions={
-          <div className="flex space-x-2">
-            <Button 
-              variant="outline" 
-              onClick={handleExportData}
-              disabled={allUsers.length === 0}
-            >
-              <Download className="h-4 w-4 mr-2" />
-              Export
-            </Button>
-            <Button 
-              onClick={handleCreateUser} 
-              className="bg-blue-600 hover:bg-blue-700 text-white"
-            >
-              <UserPlus className="h-4 w-4 mr-2" />
-              Create User
-            </Button>
-          </div>
-        }
-      />
+  title="User Management"
+  subtitle="Manage clinicians, guardians, and administrators"
+  actions={
+    <div className="flex items-center space-x-4">
+      {/* Search input */}
+      <div className="relative hidden md:block">
+        <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
+        <input
+          type="text"
+          placeholder="Search users..."
+          className="pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent w-64"
+          value={searchTerm}
+          onChange={(e) => setSearchTerm(e.target.value)}
+          aria-label="Search users"
+        />
+      </div>
       
+      {/* Buttons */}
+      <div className="flex items-center space-x-2">
+        <Button 
+          variant="outline" 
+          onClick={refreshData}
+          disabled={loading}
+          className="min-w-[120px]"
+        >
+          <RefreshCw className={`h-4 w-4 mr-2 ${loading ? 'animate-spin' : ''}`} />
+          {loading ? 'Refreshing...' : 'Refresh'}
+        </Button>
+        <Button 
+          variant="outline" 
+          onClick={handleExportData}
+          disabled={allUsers.length === 0}
+          className="hidden sm:inline-flex"
+        >
+          <Download className="h-4 w-4 mr-2" />
+          Export
+        </Button>
+        <Button 
+          onClick={handleCreateUser} 
+          className="bg-blue-600 hover:bg-blue-700 text-white"
+        >
+          <UserPlus className="h-4 w-4 mr-2" />
+          <span className="hidden sm:inline">Create User</span>
+          <span className="sm:hidden">Add</span>
+        </Button>
+      </div>
+    </div>
+  }
+/>
       <div className="min-h-screen bg-gray-50 pt-16">
         <div className="container mx-auto px-4 py-8">
           {/* Error Display */}
@@ -832,7 +897,7 @@ export default function AdminUsersPage() {
                             <div className="min-w-0 flex-1">
                               <div className="font-medium group-hover:text-blue-600 truncate">{user.name}</div>
                               <div className="text-sm text-gray-600 flex items-center truncate">
-                                <MailIcon className="h-3 w-3 mr-1 flex-shrink-0" />
+                                <Mail className="h-3 w-3 mr-1 flex-shrink-0" />
                                 <span className="truncate">{user.email}</span>
                               </div>
                               <div className="flex flex-wrap gap-1 mt-1">
