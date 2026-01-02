@@ -541,7 +541,6 @@ export const searchUsers = async (
   }, 'searchUsers');
 };
 
-// app/services/app.services.ts - SIMPLE NO-INDEX VERSION
 export const getUsersByRole = async (
   role: AppTypes.UserRole,
   options?: {
@@ -549,16 +548,16 @@ export const getUsersByRole = async (
     includeDeleted?: boolean;
     limit?: number;
   }
-): Promise<{ items: AppTypes.UserProfile[]; total: number }> => {
+): Promise<AppTypes.PaginatedResponse<AppTypes.UserProfile>> => {
   return withErrorHandling(async () => {
-    // ULTRA SIMPLE: Get all users with no filters
+    // Get all users
     const usersQuery = query(collection(db, COLLECTIONS.USERS));
     const snapshot = await getDocs(usersQuery);
     
-    // Process everything in JavaScript
+    // Process in JavaScript
     const allUsers = snapshot.docs.map(toUserProfile);
     
-    // Filter by role first
+    // Filter by role
     let filteredUsers = allUsers.filter(user => user.role === role);
     
     // Apply other filters
@@ -580,9 +579,12 @@ export const getUsersByRole = async (
     
     return {
       items: filteredUsers,
-      total: filteredUsers.length
+      total: filteredUsers.length,
+      page: 1,
+      pageSize: options?.limit || filteredUsers.length,
+      hasMore: false,
+      totalPages: 1
     };
-    
   }, `getUsersByRole(${role})`);
 };
 
@@ -1530,29 +1532,32 @@ export const logAudit = async (
 
 export const getAdminDashboardStats = async (): Promise<AppTypes.AdminStats> => {
   return withErrorHandling(async () => {
-    // Get all users count
+    // Get all users
     const usersQuery = query(collection(db, COLLECTIONS.USERS));
-    const usersSnapshot = await getCountFromServer(usersQuery);
+    const usersSnapshot = await getDocs(usersQuery);
+    const usersList = usersSnapshot.docs.map(toUserProfile);
     
-    // Get users to filter by role
-    const usersDocs = await getDocs(usersQuery);
-    const usersList = usersDocs.docs.map(doc => ({
-      id: doc.id,
-      ...doc.data()
-    })) as Array<{ id: string; role?: string; [key: string]: any }>;
+    // Count users by role and status
+    let totalActive = 0;
+    let totalInactive = 0;
+    let totalDeleted = 0;
+    let totalClinicians = 0;
+    let totalGuardians = 0;
+    let totalAdmins = 0;
     
-    // Count users by role
-    const totalClinicians = usersList.filter(user => 
-      user.role && typeof user.role === 'string' && user.role.toLowerCase() === 'clinician'
-    ).length;
-    
-    const totalGuardians = usersList.filter(user => 
-      user.role && typeof user.role === 'string' && user.role.toLowerCase() === 'guardian'
-    ).length;
-    
-    const totalAdmins = usersList.filter(user => 
-      user.role && typeof user.role === 'string' && user.role.toLowerCase() === 'admin'
-    ).length;
+    usersList.forEach(user => {
+      if (user.isDeleted) {
+        totalDeleted++;
+      } else if (!user.isActive) {
+        totalInactive++;
+      } else {
+        totalActive++;
+      }
+      
+      if (user.role === 'clinician') totalClinicians++;
+      if (user.role === 'guardian') totalGuardians++;
+      if (user.role === 'admin') totalAdmins++;
+    });
     
     // Get all patients count
     const patientsQuery = query(collection(db, COLLECTIONS.PATIENTS));
@@ -1582,14 +1587,18 @@ export const getAdminDashboardStats = async (): Promise<AppTypes.AdminStats> => 
     );
 
     return {
-      totalUsers: usersSnapshot.data().count,
+      totalUsers: usersList.length,
       totalPatients: patientsSnapshot.data().count,
       totalClinicians,
       totalGuardians,
       totalAdmins,
       pendingInvitations: invitationsSnapshot.data().count,
       recentActivity: activitySnapshot.data().count,
-      systemHealth
+      systemHealth,
+      // Additional stats your admin page might need
+      activeUsers: totalActive,
+      inactiveUsers: totalInactive,
+      deletedUsers: totalDeleted
     };
   }, 'getAdminDashboardStats');
 };
@@ -1776,7 +1785,6 @@ export const getAllUsers = async (
     const totalSnapshot = await getCountFromServer(totalQuery);
     
     const hasMore = snapshot.docs.length === (options?.limit || 10);
-    const lastDoc = snapshot.docs.length > 0 ? snapshot.docs[snapshot.docs.length - 1] : null;
     
     return {
       items: users,

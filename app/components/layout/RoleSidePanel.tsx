@@ -259,7 +259,7 @@ export default function RoleSidePanel() {
         {
           id: 'users',
           label: 'Users',
-          icon: <User className="h-5 w-5" />,
+          icon: <Users className="h-5 w-5" />,
           path: '/dashboard/admin/users',
           roles: ['admin']
         },

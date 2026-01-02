@@ -432,7 +432,7 @@ export default function AdminDashboardPage() {
                       View and manage clinician accounts
                     </p>
                     <Button variant="outline" className="w-full" asChild>
-                      <a href="/dashboard/admin/clinicians">View Clinicians</a>
+                      <a href="/dashboard/admin/users/clinicians">View Clinicians</a>
                     </Button>
                   </CardContent>
                 </Card>
@@ -445,7 +445,7 @@ export default function AdminDashboardPage() {
                       View and manage guardian accounts
                     </p>
                     <Button variant="outline" className="w-full" asChild>
-                      <a href="/dashboard/admin/guardians">View Guardians</a>
+                      <a href="/dashboard/admin/users/guardians">View Guardians</a>
                     </Button>
                   </CardContent>
                 </Card>

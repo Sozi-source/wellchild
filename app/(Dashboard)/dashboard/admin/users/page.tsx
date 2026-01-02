@@ -1,60 +1,38 @@
-// app/dashboard/admin/users/page.tsx
+// /dashboard/admin/users/page.tsx
 "use client";
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
 import DashboardHeader from '@/app/components/layout/DashBoardHeader';
 import RoleProtectedLayout from '@/app/components/layout/RoleProtectedLayout';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/app/components/ui/Index';
+import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/app/components/ui/Index';
 import { Button } from '@/app/components/ui/Button';
 import LoadingSpinner from '@/app/components/common/LoadingSpinner';
-import { useAuth } from '@/app/context/AuthContext';
+import { useAuth, UserRole as AuthUserRole } from '@/app/context/AuthContext';
 import * as AppServices from '@/app/services/app.services';
 import type * as AppTypes from '@/app/types/app.types';
 import {
-  Users,
-  UserPlus,
-  Shield,
-  Stethoscope,
-  Heart,
-  Search,
-  Filter,
-  MoreVertical,
-  ChevronRight,
-  Calendar,
-  Activity,
-  Mail,
-  Phone,
-  Clock,
-  CheckCircle,
-  XCircle,
-  TrendingUp,
-  Eye,
-  Edit,
-  Trash2,
-  Download,
-  RefreshCw,
-  UserCheck,
-  UserX,
-  SortAsc,
-  SortDesc,
-  Building,
-  MapPin,
-  Bell,
-  AlertCircle,
-  FileText,
-  Baby,
-  ArrowUpRight,
-  Plus
+  Users, UserPlus, Shield, Stethoscope, Heart, Search,
+  ChevronRight, Mail, CheckCircle, XCircle, Download,
+  RefreshCw, UserCog, Activity, Bell, Building,
+  AlertCircle, Phone, TrendingUp, Eye, Filter,
+  Calendar, Clock, MapPin, FileText, BarChart3,
+  Mail as MailIcon
 } from 'lucide-react';
 
-// Define local types that match your service responses
+// Use UserRole from AuthContext (should match AppTypes.UserRole)
+type UserRole = 'admin' | 'clinician' | 'guardian';
+
+// Update AdminUser interface to match AppTypes.UserProfile
 interface AdminUser {
   id: string;
+  uid: string;
   name: string;
   email: string;
-  role: AppTypes.UserRole;
+  role: UserRole;
   isActive: boolean;
+  isDeleted?: boolean;
+  isVerified?: boolean;
   createdAt?: Date;
   lastLogin?: Date;
   profilePicture?: string;
@@ -62,24 +40,40 @@ interface AdminUser {
   address?: string;
   clinicName?: string;
   patients?: string[];
-  isDeleted?: boolean;
+  specialization?: string;
+  licenseNumber?: string;
 }
 
-type UserRoleFilter = 'all' | 'clinician' | 'guardian' | 'admin';
-type UserStatusFilter = 'all' | 'active' | 'inactive';
+// Helper to safely extract date
+const safeToDate = (dateValue: any): Date | undefined => {
+  if (!dateValue) return undefined;
+  try {
+    if (dateValue?.toDate && typeof dateValue.toDate === 'function') {
+      return dateValue.toDate();
+    }
+    if (dateValue instanceof Date) return dateValue;
+    if (typeof dateValue === 'number') return new Date(dateValue);
+    
+    const date = new Date(dateValue);
+    return !isNaN(date.getTime()) ? date : undefined;
+  } catch {
+    return undefined;
+  }
+};
+
+const isPaginatedResponse = (response: any): response is AppTypes.PaginatedResponse<any> => {
+  return response && typeof response === 'object' && 'items' in response && Array.isArray(response.items);
+};
+
+const isApiResponse = (response: any): response is AppTypes.ApiResponse<any> => {
+  return response && typeof response === 'object' && 'success' in response;
+};
 
 export default function AdminUsersPage() {
-  const { userProfile } = useAuth();
+  const { userProfile: currentUserProfile } = useAuth();
   const router = useRouter();
-  const [users, setUsers] = useState<AdminUser[]>([]);
-  const [filteredUsers, setFilteredUsers] = useState<AdminUser[]>([]);
   const [loading, setLoading] = useState(true);
-  const [searchQuery, setSearchQuery] = useState('');
-  const [roleFilter, setRoleFilter] = useState<UserRoleFilter>('all');
-  const [statusFilter, setStatusFilter] = useState<UserStatusFilter>('all');
-  const [sortBy, setSortBy] = useState<'name' | 'createdAt' | 'lastLogin'>('name');
-  const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('asc');
-  const [selectedUsers, setSelectedUsers] = useState<string[]>([]);
+  const [searchTerm, setSearchTerm] = useState('');
   const [stats, setStats] = useState({
     total: 0,
     clinicians: 0,
@@ -87,182 +81,290 @@ export default function AdminUsersPage() {
     admins: 0,
     active: 0,
     inactive: 0,
-    deleted: 0
+    deleted: 0,
+    recentActivity: 0,
+    pendingInvites: 0,
+    totalPatients: 0,
+    systemHealth: 'good' as 'good' | 'warning' | 'critical'
   });
+  const [allUsers, setAllUsers] = useState<AdminUser[]>([]);
+  const [recentUsers, setRecentUsers] = useState<AdminUser[]>([]);
+  const [error, setError] = useState<string | null>(null);
 
-  useEffect(() => {
-    if (userProfile) {
-      loadUsers();
-    }
-  }, [userProfile]);
-
-  const loadUsers = async () => {
+  const loadDashboardData = useCallback(async () => {
     try {
       setLoading(true);
+      setError(null);
       
-      // Use your existing service function
+      // Check if current user is admin
+      if (!currentUserProfile || currentUserProfile.role !== 'admin') {
+        throw new Error('Access denied. Admin privileges required.');
+      }
+
+      // Get all users using the service function
       const response = await AppServices.getAllUsers({ limit: 1000 });
+      console.log('Service response:', response);
+
+      let userItems: any[] = [];
       
-      // Map service response to AdminUser type
-      const adminUsers: AdminUser[] = response.items.map(user => ({
-        id: user.id,
-        name: user.name,
-        email: user.email,
-        role: user.role,
-        isActive: user.isActive,
-        createdAt: user.createdAt,
-        lastLogin: user.lastLogin,
-        profilePicture: user.profilePicture,
-        phone: user.phone,
-        address: user.address,
-        clinicName: user.clinicName,
-        patients: user.patients,
-        isDeleted: user.isDeleted
-      }));
-      
-      setUsers(adminUsers);
-      setFilteredUsers(adminUsers);
-      
-      // Calculate stats correctly
-      const stats = {
-        total: adminUsers.length,
-        clinicians: adminUsers.filter(u => u.role === 'clinician').length,
-        guardians: adminUsers.filter(u => u.role === 'guardian').length,
-        admins: adminUsers.filter(u => u.role === 'admin').length,
-        active: adminUsers.filter(u => u.isActive && !u.isDeleted).length,
-        inactive: adminUsers.filter(u => !u.isActive && !u.isDeleted).length,
-        deleted: adminUsers.filter(u => u.isDeleted).length
-      };
-      setStats(stats);
-    } catch (error) {
-      console.error('Error loading users:', error);
+      // Handle different response types
+      if (isPaginatedResponse(response)) {
+        userItems = response.items;
+      } else if (Array.isArray(response)) {
+        userItems = response;
+      } else if (isApiResponse(response) && response.data) {
+        if (Array.isArray(response.data)) {
+          userItems = response.data;
+        } else if (isPaginatedResponse(response.data)) {
+          userItems = response.data.items;
+        }
+      } else {
+        console.warn('Unexpected response format:', response);
+        userItems = [];
+      }
+
+      // Map to AdminUser with proper type handling
+      const adminUsers: AdminUser[] = userItems
+        .map((item: any, index: number) => {
+          try {
+            let userData = item;
+            
+            // If it's a document snapshot with data method
+            if (item && typeof item === 'object' && 'data' in item && typeof item.data === 'function') {
+              userData = item.data();
+            }
+            
+            // If it's already a UserProfile type
+            if (item && typeof item === 'object' && 'uid' in item && 'email' in item) {
+              userData = item;
+            }
+
+            // Ensure we have valid data
+            if (!userData || typeof userData !== 'object') {
+              console.warn('Invalid user data at index', index, item);
+              return null;
+            }
+
+            // Map role - ensure it matches UserRole type
+            let userRole: UserRole = 'guardian'; // default
+            if (userData.role) {
+              const roleStr = userData.role.toString().toLowerCase();
+              if (roleStr === 'clinician' || roleStr === 'doctor' || roleStr === 'physician') {
+                userRole = 'clinician';
+              } else if (roleStr === 'admin' || roleStr === 'administrator') {
+                userRole = 'admin';
+              } else if (roleStr === 'guardian' || roleStr === 'caregiver' || roleStr === 'family') {
+                userRole = 'guardian';
+              }
+            }
+
+            // Extract user data with fallbacks
+            const userId = userData.id || userData.uid || userData.userId || `user-${Date.now()}-${index}`;
+            const userName = userData.name || userData.displayName || userData.fullName || userData.email?.split('@')[0] || 'Unnamed User';
+            const userEmail = userData.email || userData.userEmail || 'No email provided';
+            
+            return {
+              id: userId,
+              uid: userId,
+              name: userName,
+              email: userEmail,
+              role: userRole,
+              isActive: userData.isActive !== false,
+              isDeleted: userData.isDeleted || false,
+              isVerified: userData.isVerified || false,
+              createdAt: safeToDate(userData.createdAt || userData.createdDate),
+              lastLogin: safeToDate(userData.lastLogin || userData.lastSignInTime),
+              profilePicture: userData.profilePicture || userData.photoURL || userData.avatar,
+              phone: userData.phone || userData.phoneNumber || userData.mobile,
+              address: userData.address || userData.location || userData.city,
+              clinicName: userData.clinicName || userData.clinic || userData.hospital,
+              patients: userData.patients || userData.assignedPatients || [],
+              specialization: userData.specialization,
+              licenseNumber: userData.licenseNumber,
+            };
+          } catch (itemError) {
+            console.error('Error processing user item at index', index, itemError, item);
+            return null;
+          }
+        })
+        .filter((user): user is AdminUser => user !== null);
+
+      console.log('Loaded admin users:', adminUsers.length);
+      console.log('Sample user:', adminUsers[0]);
+
+      setAllUsers(adminUsers);
+
+      // Calculate stats
+      const total = adminUsers.length;
+      const clinicians = adminUsers.filter(u => u.role === 'clinician').length;
+      const guardians = adminUsers.filter(u => u.role === 'guardian').length;
+      const admins = adminUsers.filter(u => u.role === 'admin').length;
+      const active = adminUsers.filter(u => u.isActive && !u.isDeleted).length;
+      const inactive = adminUsers.filter(u => !u.isActive && !u.isDeleted).length;
+      const deleted = adminUsers.filter(u => u.isDeleted).length;
+
+      // Get recent users (non-deleted, sorted by creation date)
+      const recent = adminUsers
+        .filter(u => !u.isDeleted)
+        .sort((a, b) => (b.createdAt?.getTime() || 0) - (a.createdAt?.getTime() || 0))
+        .slice(0, 5);
+      setRecentUsers(recent);
+
+      // Get admin dashboard stats from service
+      try {
+        const adminStats = await AppServices.getAdminDashboardStats();
+        console.log('Admin stats received:', adminStats);
+        
+        setStats({
+          total,
+          clinicians,
+          guardians,
+          admins,
+          active,
+          inactive,
+          deleted,
+          recentActivity: adminStats.recentActivity || 0,
+          pendingInvites: adminStats.pendingInvitations || 0,
+          totalPatients: adminStats.totalPatients || 0,
+          systemHealth: adminStats.systemHealth || 'good'
+        });
+      } catch (statsError) {
+        console.log('Using fallback stats:', statsError);
+        setStats({ 
+          total, 
+          clinicians, 
+          guardians, 
+          admins, 
+          active, 
+          inactive, 
+          deleted, 
+          recentActivity: 0, 
+          pendingInvites: 0,
+          totalPatients: 0,
+          systemHealth: 'good'
+        });
+      }
+
+    } catch (error: any) {
+      console.error('Error loading dashboard:', error);
+      setError(error.message || 'Failed to load user data. Please try again.');
+      setStats({ 
+        total: 0, 
+        clinicians: 0, 
+        guardians: 0, 
+        admins: 0, 
+        active: 0, 
+        inactive: 0, 
+        deleted: 0, 
+        recentActivity: 0, 
+        pendingInvites: 0,
+        totalPatients: 0,
+        systemHealth: 'good'
+      });
+      setAllUsers([]);
+      setRecentUsers([]);
     } finally {
       setLoading(false);
     }
-  };
+  }, [currentUserProfile]);
 
   useEffect(() => {
-    let result = users.filter(user => !user.isDeleted); // Filter out deleted users by default
-
-    // Apply search filter
-    if (searchQuery) {
-      const query = searchQuery.toLowerCase();
-      result = result.filter(user =>
-        user.name.toLowerCase().includes(query) ||
-        user.email.toLowerCase().includes(query) ||
-        user.phone?.toLowerCase().includes(query) ||
-        user.clinicName?.toLowerCase().includes(query)
-      );
+    if (currentUserProfile && currentUserProfile.role === 'admin') {
+      loadDashboardData();
+    } else if (currentUserProfile) {
+      // If user is logged in but not admin, show error
+      setError('Access denied. Admin privileges required.');
+      setLoading(false);
     }
+  }, [currentUserProfile, loadDashboardData]);
 
-    // Apply role filter
-    if (roleFilter !== 'all') {
-      result = result.filter(user => user.role === roleFilter);
+  const handleRoleSelect = (role: UserRole) => {
+    if (role === 'admin') {
+      router.push('/dashboard/admin/users/admins');
+    } else {
+      router.push(`/dashboard/admin/users/${role}s`);
     }
+  };
 
-    // Apply status filter
-    if (statusFilter !== 'all') {
-      if (statusFilter === 'active') {
-        result = result.filter(user => user.isActive);
-      } else {
-        result = result.filter(user => !user.isActive);
-      }
-    }
-
-    // Apply sorting
-    result.sort((a, b) => {
-      const aValue = sortBy === 'name' ? a.name :
-                    sortBy === 'createdAt' ? a.createdAt?.getTime() || 0 :
-                    a.lastLogin?.getTime() || 0;
-      
-      const bValue = sortBy === 'name' ? b.name :
-                    sortBy === 'createdAt' ? b.createdAt?.getTime() || 0 :
-                    b.lastLogin?.getTime() || 0;
-      
-      if (sortBy === 'name') {
-        return sortOrder === 'asc' 
-          ? aValue.toString().localeCompare(bValue.toString())
-          : bValue.toString().localeCompare(aValue.toString());
-      } else {
-        return sortOrder === 'asc' 
-          ? Number(aValue) - Number(bValue)
-          : Number(bValue) - Number(aValue);
-      }
-    });
-
-    setFilteredUsers(result);
-  }, [users, searchQuery, roleFilter, statusFilter, sortBy, sortOrder]);
-
-  const handleViewUser = (userId: string, role: string) => {
-    router.push(`/dashboard/admin/users/${role}/${userId}`);
+  const handleViewAllUsers = () => {
+    router.push('/dashboard/admin/users/all');
   };
 
   const handleCreateUser = () => {
     router.push('/dashboard/admin/users/new');
   };
 
-  const handleEditUser = (userId: string, e: React.MouseEvent) => {
-    e.stopPropagation();
-    router.push(`/dashboard/admin/users/edit/${userId}`);
-  };
-
-  const handleDeleteUser = async (userId: string, e: React.MouseEvent) => {
-    e.stopPropagation();
-    if (confirm('Are you sure you want to delete this user? This will mark them as deleted but preserve their data.')) {
-      try {
-        // Use the deleteUser function from your services
-        await AppServices.deleteUser(userProfile?.uid || '', userId);
-        
-        // Update local state
-        setUsers(users.map(user => 
-          user.id === userId ? { ...user, isDeleted: true } : user
-        ));
-      } catch (error) {
-        console.error('Error deleting user:', error);
-        alert('Failed to delete user. Please try again.');
-      }
-    }
-  };
-
-  const handleToggleStatus = async (userId: string, currentStatus: boolean, e: React.MouseEvent) => {
-    e.stopPropagation();
-    try {
-      const newStatus = !currentStatus;
-      
-      // Use the updateUserProfile function from your services
-      await AppServices.updateUserProfile(userId, { isActive: newStatus });
-      
-      // Update local state
-      setUsers(users.map(user => 
-        user.id === userId ? { ...user, isActive: newStatus } : user
-      ));
-    } catch (error) {
-      console.error('Error updating user status:', error);
-    }
-  };
-
-  const handleSelectUser = (userId: string) => {
-    setSelectedUsers(prev => 
-      prev.includes(userId) 
-        ? prev.filter(id => id !== userId)
-        : [...prev, userId]
-    );
-  };
-
-  const handleSelectAll = () => {
-    if (selectedUsers.length === filteredUsers.length) {
-      setSelectedUsers([]);
+  const handleViewUser = (userId: string, role: UserRole) => {
+    if (role === 'clinician') {
+      router.push(`/dashboard/admin/users/clinicians/${userId}`);
+    } else if (role === 'guardian') {
+      router.push(`/dashboard/admin/users/guardians/${userId}`);
+    } else if (role === 'admin') {
+      router.push(`/dashboard/admin/users/admins/${userId}`);
     } else {
-      setSelectedUsers(filteredUsers.map(user => user.id));
+      router.push(`/dashboard/admin/users/${userId}`);
     }
+  };
+
+  const handleExportData = async () => {
+    if (allUsers.length === 0) {
+      setError('No data to export');
+      return;
+    }
+
+    try {
+      const headers = ['ID', 'Name', 'Email', 'Role', 'Status', 'Phone', 'Clinic', 'Created At', 'Last Login'];
+      const csv = [
+        headers.join(','),
+        ...allUsers.map(u => [
+          u.id,
+          `"${(u.name || '').replace(/"/g, '""')}"`,
+          u.email,
+          u.role,
+          u.isActive ? 'Active' : 'Inactive',
+          u.phone || 'N/A',
+          u.clinicName ? `"${u.clinicName.replace(/"/g, '""')}"` : 'N/A',
+          u.createdAt ? u.createdAt.toISOString().split('T')[0] : 'N/A',
+          u.lastLogin ? u.lastLogin.toISOString().split('T')[0] : 'Never'
+        ].join(','))
+      ].join('\n');
+      
+      const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.setAttribute('download', `users_export_${new Date().toISOString().split('T')[0]}.csv`);
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(url);
+    } catch (exportError) {
+      console.error('Export error:', exportError);
+      setError('Failed to export data');
+    }
+  };
+
+  const formatDate = (date?: Date) => {
+    if (!date) return 'Never';
+    const now = new Date();
+    const diffTime = Math.abs(now.getTime() - date.getTime());
+    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+    if (diffDays === 0) return 'Today';
+    if (diffDays === 1) return 'Yesterday';
+    if (diffDays < 7) return `${diffDays} days ago`;
+    return date.toLocaleDateString('en-US', { 
+      month: 'short', 
+      day: 'numeric', 
+      year: diffDays > 365 ? 'numeric' : undefined 
+    });
   };
 
   const getRoleIcon = (role: string) => {
     switch (role) {
-      case 'admin': return <Shield className="h-4 w-4" />;
-      case 'clinician': return <Stethoscope className="h-4 w-4" />;
-      case 'guardian': return <Heart className="h-4 w-4" />;
-      default: return <Users className="h-4 w-4" />;
+      case 'admin': return <Shield className="h-5 w-5" />;
+      case 'clinician': return <Stethoscope className="h-5 w-5" />;
+      case 'guardian': return <Heart className="h-5 w-5" />;
+      default: return <Users className="h-5 w-5" />;
     }
   };
 
@@ -275,35 +377,50 @@ export default function AdminUsersPage() {
     }
   };
 
-  const getStatusText = (user: AdminUser) => {
-    if (user.isDeleted) return 'Deleted';
-    return user.isActive ? 'Active' : 'Inactive';
+  const getStatusColor = (isActive: boolean) => {
+    return isActive ? 'bg-emerald-100 text-emerald-800' : 'bg-red-100 text-red-800';
   };
 
-  const getStatusColor = (user: AdminUser) => {
-    if (user.isDeleted) return 'bg-gray-100 text-gray-800';
-    return user.isActive ? 'bg-emerald-100 text-emerald-800' : 'bg-red-100 text-red-800';
-  };
+  const filteredUsers = useMemo(() => {
+    if (!searchTerm.trim()) return recentUsers;
+    const term = searchTerm.toLowerCase();
+    return allUsers.filter(user =>
+      !user.isDeleted &&
+      (user.name?.toLowerCase().includes(term) ||
+       user.email?.toLowerCase().includes(term) ||
+       user.role?.toLowerCase().includes(term) ||
+       user.clinicName?.toLowerCase().includes(term) ||
+       user.phone?.toLowerCase().includes(term))
+    ).slice(0, 5);
+  }, [searchTerm, recentUsers, allUsers]);
 
-  const getStatusIcon = (user: AdminUser) => {
-    if (user.isDeleted) return <XCircle className="h-4 w-4" />;
-    return user.isActive ? <CheckCircle className="h-4 w-4" /> : <XCircle className="h-4 w-4" />;
-  };
-
-  const formatDate = (date?: Date) => {
-    if (!date) return 'Never';
-    return date.toLocaleDateString('en-US', {
-      year: 'numeric',
-      month: 'short',
-      day: 'numeric'
-    });
+  const refreshData = () => {
+    setError(null);
+    loadDashboardData();
   };
 
   if (loading) {
     return (
       <RoleProtectedLayout allowedRoles={['admin']}>
-        <div className="min-h-screen flex items-center justify-center bg-gray-50">
+        <div className="min-h-screen flex flex-col items-center justify-center bg-gray-50">
           <LoadingSpinner size="lg" />
+          <span className="mt-4 text-gray-600">Loading user management dashboard...</span>
+        </div>
+      </RoleProtectedLayout>
+    );
+  }
+
+  // Check if user is authorized
+  if (currentUserProfile?.role !== 'admin') {
+    return (
+      <RoleProtectedLayout allowedRoles={['admin']}>
+        <div className="min-h-screen flex flex-col items-center justify-center bg-gray-50">
+          <AlertCircle className="h-16 w-16 text-red-500 mb-4" />
+          <h1 className="text-2xl font-bold text-gray-900 mb-2">Access Denied</h1>
+          <p className="text-gray-600 mb-6">Admin privileges are required to access this page.</p>
+          <Button onClick={() => router.push('/dashboard')}>
+            Return to Dashboard
+          </Button>
         </div>
       </RoleProtectedLayout>
     );
@@ -314,484 +431,489 @@ export default function AdminUsersPage() {
       <DashboardHeader
         title="User Management"
         subtitle="Manage clinicians, guardians, and administrators"
+        subtitleActions={
+          <div className="flex items-center space-x-4">
+            <div className="relative">
+              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
+              <input
+                type="text"
+                placeholder="Search users..."
+                className="pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent w-64"
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                aria-label="Search users"
+              />
+            </div>
+            <Button 
+              variant="outline" 
+              onClick={refreshData}
+              disabled={loading}
+              className="min-w-[120px]"
+            >
+              <RefreshCw className={`h-4 w-4 mr-2 ${loading ? 'animate-spin' : ''}`} />
+              {loading ? 'Refreshing...' : 'Refresh'}
+            </Button>
+          </div>
+        }
         actions={
-          <Button 
-            onClick={handleCreateUser}
-            className="bg-blue-600 hover:bg-blue-700 text-white"
-          >
-            <UserPlus className="h-4 w-4 mr-2" />
-            Add User
-          </Button>
+          <div className="flex space-x-2">
+            <Button 
+              variant="outline" 
+              onClick={handleExportData}
+              disabled={allUsers.length === 0}
+            >
+              <Download className="h-4 w-4 mr-2" />
+              Export
+            </Button>
+            <Button 
+              onClick={handleCreateUser} 
+              className="bg-blue-600 hover:bg-blue-700 text-white"
+            >
+              <UserPlus className="h-4 w-4 mr-2" />
+              Create User
+            </Button>
+          </div>
         }
       />
       
       <div className="min-h-screen bg-gray-50 pt-16">
-        <div className="container mx-auto px-4 sm:px-6 lg:px-8 py-8">
-          {/* Stats Overview */}
+        <div className="container mx-auto px-4 py-8">
+          {/* Error Display */}
+          {error && (
+            <div className="mb-6 p-4 bg-red-50 border border-red-200 rounded-lg">
+              <div className="flex items-center">
+                <AlertCircle className="h-5 w-5 text-red-400 mr-2 flex-shrink-0" />
+                <span className="text-red-800">{error}</span>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => setError(null)}
+                  className="ml-auto text-red-700 hover:text-red-800 hover:bg-red-100"
+                >
+                  Dismiss
+                </Button>
+              </div>
+            </div>
+          )}
+
+          {/* Stats Cards */}
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
-            <Card className="bg-white border border-gray-200">
-              <CardContent className="p-6">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-sm text-gray-600">Total Users</p>
-                    <p className="text-2xl font-bold text-gray-900">{stats.total}</p>
-                  </div>
-                  <div className="h-12 w-12 rounded-full bg-blue-100 flex items-center justify-center">
-                    <Users className="h-6 w-6 text-blue-600" />
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-
-            <Card className="bg-white border border-gray-200">
-              <CardContent className="p-6">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-sm text-gray-600">Active Users</p>
-                    <p className="text-2xl font-bold text-emerald-600">{stats.active}</p>
-                  </div>
-                  <div className="h-12 w-12 rounded-full bg-emerald-100 flex items-center justify-center">
-                    <UserCheck className="h-6 w-6 text-emerald-600" />
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-
-            <Card className="bg-white border border-gray-200">
+            <Card 
+              className="cursor-pointer hover:shadow-md transition-shadow border hover:border-teal-300" 
+              onClick={() => handleRoleSelect('clinician')}
+              role="button"
+              tabIndex={0}
+              onKeyDown={(e) => e.key === 'Enter' && handleRoleSelect('clinician')}
+            >
               <CardContent className="p-6">
                 <div className="flex items-center justify-between">
                   <div>
                     <p className="text-sm text-gray-600">Clinicians</p>
-                    <p className="text-2xl font-bold text-gray-900">{stats.clinicians}</p>
+                    <p className="text-2xl font-bold text-teal-600">{stats.clinicians}</p>
+                    <p className="text-xs text-gray-500">Medical professionals</p>
                   </div>
                   <div className="h-12 w-12 rounded-full bg-teal-100 flex items-center justify-center">
                     <Stethoscope className="h-6 w-6 text-teal-600" />
                   </div>
                 </div>
               </CardContent>
+              <CardFooter className="bg-gray-50 border-t px-6 py-3">
+                <div className="flex items-center justify-between w-full">
+                  <span className="text-xs text-gray-600">View clinicians</span>
+                  <ChevronRight className="h-4 w-4 text-gray-400" />
+                </div>
+              </CardFooter>
             </Card>
 
-            <Card className="bg-white border border-gray-200">
+            <Card 
+              className="cursor-pointer hover:shadow-md transition-shadow border hover:border-sky-300" 
+              onClick={() => handleRoleSelect('guardian')}
+              role="button"
+              tabIndex={0}
+              onKeyDown={(e) => e.key === 'Enter' && handleRoleSelect('guardian')}
+            >
               <CardContent className="p-6">
                 <div className="flex items-center justify-between">
                   <div>
                     <p className="text-sm text-gray-600">Guardians</p>
-                    <p className="text-2xl font-bold text-gray-900">{stats.guardians}</p>
+                    <p className="text-2xl font-bold text-sky-600">{stats.guardians}</p>
+                    <p className="text-xs text-gray-500">Patient caregivers</p>
                   </div>
                   <div className="h-12 w-12 rounded-full bg-sky-100 flex items-center justify-center">
                     <Heart className="h-6 w-6 text-sky-600" />
                   </div>
                 </div>
               </CardContent>
+              <CardFooter className="bg-gray-50 border-t px-6 py-3">
+                <div className="flex items-center justify-between w-full">
+                  <span className="text-xs text-gray-600">View guardians</span>
+                  <ChevronRight className="h-4 w-4 text-gray-400" />
+                </div>
+              </CardFooter>
+            </Card>
+
+            <Card 
+              className="cursor-pointer hover:shadow-md transition-shadow border hover:border-blue-300" 
+              onClick={handleViewAllUsers}
+              role="button"
+              tabIndex={0}
+              onKeyDown={(e) => e.key === 'Enter' && handleViewAllUsers()}
+            >
+              <CardContent className="p-6">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-sm text-gray-600">All Users</p>
+                    <p className="text-2xl font-bold text-blue-600">{stats.total}</p>
+                    <p className="text-xs text-gray-500">{stats.active} active</p>
+                  </div>
+                  <div className="h-12 w-12 rounded-full bg-blue-100 flex items-center justify-center">
+                    <Users className="h-6 w-6 text-blue-600" />
+                  </div>
+                </div>
+              </CardContent>
+              <CardFooter className="bg-gray-50 border-t px-6 py-3">
+                <div className="flex items-center justify-between w-full">
+                  <span className="text-xs text-gray-600">View all users</span>
+                  <ChevronRight className="h-4 w-4 text-gray-400" />
+                </div>
+              </CardFooter>
+            </Card>
+
+            <Card 
+              className="cursor-pointer hover:shadow-md transition-shadow border hover:border-emerald-300" 
+              onClick={handleCreateUser}
+              role="button"
+              tabIndex={0}
+              onKeyDown={(e) => e.key === 'Enter' && handleCreateUser()}
+            >
+              <CardContent className="p-6">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-sm text-gray-600">Add New User</p>
+                    <p className="text-2xl font-bold text-emerald-600">+</p>
+                    <p className="text-xs text-gray-500">Create new account</p>
+                  </div>
+                  <div className="h-12 w-12 rounded-full bg-emerald-100 flex items-center justify-center">
+                    <UserPlus className="h-6 w-6 text-emerald-600" />
+                  </div>
+                </div>
+              </CardContent>
+              <CardFooter className="bg-gray-50 border-t px-6 py-3">
+                <div className="flex items-center justify-between w-full">
+                  <span className="text-xs text-gray-600">Create user</span>
+                  <ChevronRight className="h-4 w-4 text-gray-400" />
+                </div>
+              </CardFooter>
             </Card>
           </div>
 
           {/* Additional Stats */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 mb-8">
-            <Card className="bg-white border border-gray-200">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
+            <Card 
+              className="cursor-pointer hover:border-indigo-300"
+              onClick={() => router.push('/dashboard/admin/users/admins')}
+            >
               <CardContent className="p-6">
                 <div className="flex items-center justify-between">
                   <div>
                     <p className="text-sm text-gray-600">Administrators</p>
-                    <p className="text-2xl font-bold text-blue-600">{stats.admins}</p>
+                    <p className="text-2xl font-bold text-indigo-600">{stats.admins}</p>
+                    <p className="text-xs text-gray-500">System administrators</p>
                   </div>
-                  <div className="h-12 w-12 rounded-full bg-blue-100 flex items-center justify-center">
-                    <Shield className="h-6 w-6 text-blue-600" />
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-
-            <Card className="bg-white border border-gray-200">
-              <CardContent className="p-6">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-sm text-gray-600">Inactive Users</p>
-                    <p className="text-2xl font-bold text-red-600">{stats.inactive}</p>
-                  </div>
-                  <div className="h-12 w-12 rounded-full bg-red-100 flex items-center justify-center">
-                    <UserX className="h-6 w-6 text-red-600" />
+                  <div className="h-10 w-10 rounded-full bg-indigo-100 flex items-center justify-center">
+                    <Shield className="h-5 w-5 text-indigo-600" />
                   </div>
                 </div>
               </CardContent>
             </Card>
 
-            <Card className="bg-white border border-gray-200">
+            <Card 
+              className="cursor-pointer hover:border-purple-300"
+              onClick={() => router.push('/dashboard/admin/settings/invitations')}
+            >
               <CardContent className="p-6">
                 <div className="flex items-center justify-between">
                   <div>
-                    <p className="text-sm text-gray-600">Deleted Users</p>
-                    <p className="text-2xl font-bold text-gray-600">{stats.deleted}</p>
+                    <p className="text-sm text-gray-600">Pending Invites</p>
+                    <p className="text-2xl font-bold text-purple-600">{stats.pendingInvites}</p>
+                    <p className="text-xs text-gray-500">Awaiting acceptance</p>
                   </div>
-                  <div className="h-12 w-12 rounded-full bg-gray-100 flex items-center justify-center">
-                    <Trash2 className="h-6 w-6 text-gray-600" />
+                  <div className="h-10 w-10 rounded-full bg-purple-100 flex items-center justify-center">
+                    <Bell className="h-5 w-5 text-purple-600" />
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+
+            <Card 
+              className="cursor-pointer hover:border-amber-300"
+              onClick={() => router.push('/dashboard/admin/activity')}
+            >
+              <CardContent className="p-6">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-sm text-gray-600">Recent Activity</p>
+                    <p className="text-2xl font-bold text-amber-600">{stats.recentActivity}</p>
+                    <p className="text-xs text-gray-500">Last 7 days</p>
+                  </div>
+                  <div className="h-10 w-10 rounded-full bg-amber-100 flex items-center justify-center">
+                    <Activity className="h-5 w-5 text-amber-600" />
                   </div>
                 </div>
               </CardContent>
             </Card>
           </div>
 
-          {/* Filters and Controls */}
-          <Card className="mb-8 bg-white border border-gray-200">
-            <CardContent className="p-6">
-              <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-                {/* Search */}
-                <div className="relative flex-1 max-w-md">
-                  <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
-                  <input
-                    type="text"
-                    placeholder="Search users by name, email, or clinic..."
-                    value={searchQuery}
-                    onChange={(e) => setSearchQuery(e.target.value)}
-                    className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                  />
-                </div>
-
-                {/* Filters */}
-                <div className="flex flex-wrap gap-3">
-                  <div className="flex items-center space-x-2">
-                    <Filter className="h-4 w-4 text-gray-500" />
-                    <select
-                      value={roleFilter}
-                      onChange={(e) => setRoleFilter(e.target.value as UserRoleFilter)}
-                      className="border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                    >
-                      <option value="all">All Roles</option>
-                      <option value="admin">Administrators</option>
-                      <option value="clinician">Clinicians</option>
-                      <option value="guardian">Guardians</option>
-                    </select>
+          {/* Main Content */}
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+            {/* User Types */}
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center">
+                  <Filter className="h-5 w-5 mr-2 text-gray-500" />
+                  Select User Type
+                </CardTitle>
+                <CardDescription>Manage specific user groups</CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                {[
+                  { 
+                    role: 'clinician' as UserRole, 
+                    icon: Stethoscope, 
+                    color: 'teal', 
+                    description: 'medical professionals',
+                    statsKey: 'clinicians',
+                    route: () => handleRoleSelect('clinician')
+                  },
+                  { 
+                    role: 'guardian' as UserRole, 
+                    icon: Heart, 
+                    color: 'sky', 
+                    description: 'caregivers',
+                    statsKey: 'guardians',
+                    route: () => handleRoleSelect('guardian')
+                  },
+                  { 
+                    role: 'admin' as UserRole, 
+                    icon: Shield, 
+                    color: 'blue', 
+                    description: 'system admins',
+                    statsKey: 'admins',
+                    route: () => router.push('/dashboard/admin/users/admins')
+                  },
+                ].map(({ role, icon: Icon, color, description, statsKey, route }) => (
+                  <div 
+                    key={role}
+                    className={`p-4 border rounded-lg cursor-pointer hover:shadow-md transition-all hover:border-${color}-300`}
+                    onClick={route}
+                    role="button"
+                    tabIndex={0}
+                    onKeyDown={(e) => e.key === 'Enter' && route()}
+                  >
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center space-x-4">
+                        <div className={`h-12 w-12 rounded-lg ${color === 'teal' ? 'bg-teal-100' : color === 'sky' ? 'bg-sky-100' : 'bg-blue-100'} flex items-center justify-center`}>
+                          <Icon className={`h-6 w-6 ${color === 'teal' ? 'text-teal-600' : color === 'sky' ? 'text-sky-600' : 'text-blue-600'}`} />
+                        </div>
+                        <div>
+                          <h3 className="font-semibold capitalize">{role}s</h3>
+                          <p className="text-sm text-gray-600">
+                            {stats[statsKey as keyof typeof stats]} {description}
+                          </p>
+                          <div className="flex space-x-2 mt-2">
+                            <span className={`text-xs px-2 py-1 rounded-full ${getStatusColor(true)}`}>
+                              <TrendingUp className="h-3 w-3 inline mr-1" />
+                              {role === 'admin' ? 'All active' : `${stats.active} active`}
+                            </span>
+                          </div>
+                        </div>
+                      </div>
+                      <ChevronRight className="h-5 w-5 text-gray-400" />
+                    </div>
                   </div>
+                ))}
+              </CardContent>
+              <CardFooter>
+                <Button 
+                  onClick={handleCreateUser} 
+                  className="w-full bg-blue-600 hover:bg-blue-700 text-white"
+                >
+                  <UserPlus className="h-4 w-4 mr-2" />
+                  Create New User
+                </Button>
+              </CardFooter>
+            </Card>
 
-                  <select
-                    value={statusFilter}
-                    onChange={(e) => setStatusFilter(e.target.value as UserStatusFilter)}
-                    className="border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                  >
-                    <option value="all">All Status</option>
-                    <option value="active">Active</option>
-                    <option value="inactive">Inactive</option>
-                  </select>
-
-                  <Button
-                    variant="outline"
-                    onClick={() => {
-                      setSortBy('name');
-                      setSortOrder('asc');
-                      setSearchQuery('');
-                      setRoleFilter('all');
-                      setStatusFilter('all');
-                    }}
-                    className="border-gray-300 hover:bg-gray-50"
-                  >
-                    <RefreshCw className="h-4 w-4 mr-2" />
-                    Reset
-                  </Button>
-                </div>
-              </div>
-
-              {/* Sort Controls */}
-              <div className="flex items-center gap-4 mt-4">
-                <span className="text-sm text-gray-600">Sort by:</span>
-                <div className="flex gap-2">
-                  {(['name', 'createdAt', 'lastLogin'] as const).map((field) => (
-                    <Button
-                      key={field}
-                      variant={sortBy === field ? "default" : "outline"}
-                      size="sm"
-                      onClick={() => {
-                        if (sortBy === field) {
-                          setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc');
-                        } else {
-                          setSortBy(field);
-                          setSortOrder('asc');
-                        }
-                      }}
-                      className={sortBy === field ? "bg-blue-600 hover:bg-blue-700" : "border-gray-300 hover:bg-gray-50"}
-                    >
-                      {field === 'name' && 'Name'}
-                      {field === 'createdAt' && 'Join Date'}
-                      {field === 'lastLogin' && 'Last Login'}
-                      {sortBy === field && (
-                        sortOrder === 'asc' ? <SortAsc className="h-3 w-3 ml-1" /> : <SortDesc className="h-3 w-3 ml-1" />
+            {/* Recent Users */}
+            <Card>
+              <CardHeader>
+                <div className="flex items-center justify-between">
+                  <div>
+                    <CardTitle className="flex items-center">
+                      <BarChart3 className="h-5 w-5 mr-2 text-gray-500" />
+                      {searchTerm ? 'Search Results' : 'Recent Users'}
+                    </CardTitle>
+                    <CardDescription className="flex items-center">
+                      {searchTerm ? (
+                        <>
+                          <FileText className="h-4 w-4 mr-1" />
+                          {filteredUsers.length} results for "{searchTerm}"
+                        </>
+                      ) : (
+                        <>
+                          <Calendar className="h-4 w-4 mr-1" />
+                          Recently added users
+                        </>
                       )}
-                    </Button>
-                  ))}
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-
-          {/* Users Table */}
-          <Card className="bg-white border border-gray-200">
-            <CardHeader className="pb-3 border-b border-gray-100">
-              <div className="flex items-center justify-between">
-                <div>
-                  <CardTitle className="text-xl font-bold text-gray-900">
-                    User Management ({filteredUsers.length})
-                  </CardTitle>
-                  <CardDescription className="text-gray-600">
-                    {selectedUsers.length > 0 ? `${selectedUsers.length} selected` : 'Manage all system users'}
-                  </CardDescription>
-                </div>
-                {selectedUsers.length > 0 && (
-                  <div className="flex items-center space-x-2">
-                    <span className="text-sm text-gray-600">{selectedUsers.length} selected</span>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      className="border-red-300 text-red-600 hover:bg-red-50"
-                      onClick={async () => {
-                        if (confirm(`Delete ${selectedUsers.length} selected users?`)) {
-                          try {
-                            for (const userId of selectedUsers) {
-                              await AppServices.deleteUser(userProfile?.uid || '', userId);
-                            }
-                            setSelectedUsers([]);
-                            loadUsers(); // Refresh the list
-                          } catch (error) {
-                            console.error('Error deleting users:', error);
-                          }
-                        }
-                      }}
-                    >
-                      <Trash2 className="h-4 w-4 mr-2" />
-                      Delete Selected
-                    </Button>
+                    </CardDescription>
                   </div>
-                )}
-              </div>
-            </CardHeader>
-            
-            <CardContent className="p-0">
-              {filteredUsers.length === 0 ? (
-                <div className="text-center py-12">
-                  <Users className="h-12 w-12 text-gray-400 mx-auto mb-4" />
-                  <h3 className="text-lg font-medium text-gray-900 mb-2">No users found</h3>
-                  <p className="text-gray-600 mb-4">
-                    {searchQuery || roleFilter !== 'all' || statusFilter !== 'all'
-                      ? 'Try adjusting your filters or search query'
-                      : 'Get started by adding your first user'}
-                  </p>
-                  <Button
-                    onClick={handleCreateUser}
-                    className="bg-blue-600 hover:bg-blue-700 text-white"
+                  <Button 
+                    variant="ghost" 
+                    size="sm" 
+                    onClick={handleViewAllUsers}
+                    className="text-blue-600 hover:text-blue-700 hover:bg-blue-50"
                   >
-                    <UserPlus className="h-4 w-4 mr-2" />
-                    Add User
+                    <Eye className="h-4 w-4 mr-1" />
+                    View All
                   </Button>
                 </div>
-              ) : (
-                <div className="overflow-x-auto">
-                  <table className="w-full">
-                    <thead>
-                      <tr className="bg-gray-50 border-b border-gray-100">
-                        <th className="py-3 px-6 text-left">
-                          <input
-                            type="checkbox"
-                            checked={selectedUsers.length === filteredUsers.length && filteredUsers.length > 0}
-                            onChange={handleSelectAll}
-                            className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
-                          />
-                        </th>
-                        <th className="py-3 px-6 text-left text-xs font-medium text-gray-700 uppercase tracking-wider">
-                          User
-                        </th>
-                        <th className="py-3 px-6 text-left text-xs font-medium text-gray-700 uppercase tracking-wider">
-                          Role & Details
-                        </th>
-                        <th className="py-3 px-6 text-left text-xs font-medium text-gray-700 uppercase tracking-wider">
-                          Status
-                        </th>
-                        <th className="py-3 px-6 text-left text-xs font-medium text-gray-700 uppercase tracking-wider">
-                          Contact & Activity
-                        </th>
-                        <th className="py-3 px-6 text-left text-xs font-medium text-gray-700 uppercase tracking-wider">
-                          Actions
-                        </th>
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y divide-gray-100">
-                      {filteredUsers.map((user) => (
-                        <tr 
-                          key={user.id} 
-                          className={`hover:bg-gray-50 transition-colors ${user.isDeleted ? 'opacity-60' : ''}`}
-                          onClick={() => !user.isDeleted && handleViewUser(user.id, user.role)}
-                        >
-                          <td className="py-4 px-6" onClick={(e) => e.stopPropagation()}>
-                            <input
-                              type="checkbox"
-                              checked={selectedUsers.includes(user.id)}
-                              onChange={() => handleSelectUser(user.id)}
-                              className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
-                              disabled={user.isDeleted}
-                            />
-                          </td>
-                          <td className="py-4 px-6">
-                            <div className="flex items-center">
-                              <div className="h-10 w-10 rounded-full bg-gray-100 flex items-center justify-center mr-3">
-                                {user.profilePicture ? (
-                                  <img 
-                                    src={user.profilePicture} 
-                                    alt={user.name}
-                                    className="h-10 w-10 rounded-full object-cover"
-                                  />
-                                ) : (
-                                  <span className="font-medium text-gray-700">
-                                    {user.name.charAt(0).toUpperCase()}
+              </CardHeader>
+              <CardContent>
+                {filteredUsers.length === 0 ? (
+                  <div className="text-center py-8">
+                    <Users className="h-12 w-12 text-gray-400 mx-auto mb-4" />
+                    <h3 className="text-lg font-medium mb-2">
+                      {searchTerm ? 'No matching users' : 'No users found'}
+                    </h3>
+                    <p className="text-gray-600 mb-4">
+                      {searchTerm ? 'Try different search terms' : 'Create your first user'}
+                    </p>
+                    <Button onClick={handleCreateUser}>
+                      <UserPlus className="h-4 w-4 mr-2" />
+                      Create User
+                    </Button>
+                  </div>
+                ) : (
+                  <div className="space-y-4">
+                    {filteredUsers.map((user) => (
+                      <div 
+                        key={user.id} 
+                        className="p-4 border rounded-lg hover:bg-gray-50 cursor-pointer transition-colors group"
+                        onClick={() => handleViewUser(user.id, user.role)}
+                        role="button"
+                        tabIndex={0}
+                        onKeyDown={(e) => e.key === 'Enter' && handleViewUser(user.id, user.role)}
+                      >
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center space-x-3">
+                            <div className="h-10 w-10 rounded-full bg-gray-100 flex items-center justify-center overflow-hidden">
+                              {user.profilePicture ? (
+                                <img 
+                                  src={user.profilePicture} 
+                                  alt={user.name} 
+                                  className="h-10 w-10 object-cover"
+                                  onError={(e) => {
+                                    (e.target as HTMLImageElement).style.display = 'none';
+                                    const parent = (e.target as HTMLImageElement).parentElement;
+                                    if (parent) {
+                                      const fallback = document.createElement('span');
+                                      fallback.className = 'font-medium text-gray-700';
+                                      fallback.textContent = user.name.charAt(0).toUpperCase();
+                                      parent.appendChild(fallback);
+                                    }
+                                  }}
+                                />
+                              ) : (
+                                <span className="font-medium text-gray-700">
+                                  {user.name.charAt(0).toUpperCase()}
+                                </span>
+                              )}
+                            </div>
+                            <div className="min-w-0 flex-1">
+                              <div className="font-medium group-hover:text-blue-600 truncate">{user.name}</div>
+                              <div className="text-sm text-gray-600 flex items-center truncate">
+                                <MailIcon className="h-3 w-3 mr-1 flex-shrink-0" />
+                                <span className="truncate">{user.email}</span>
+                              </div>
+                              <div className="flex flex-wrap gap-1 mt-1">
+                                <span className={`text-xs px-2 py-1 rounded-full flex items-center ${getRoleColor(user.role)}`}>
+                                  {getRoleIcon(user.role)}
+                                  <span className="ml-1 capitalize">{user.role}</span>
+                                </span>
+                                <span className={`text-xs px-2 py-1 rounded-full flex items-center ${getStatusColor(user.isActive)}`}>
+                                  {user.isActive ? (
+                                    <CheckCircle className="h-3 w-3 mr-1" />
+                                  ) : (
+                                    <XCircle className="h-3 w-3 mr-1" />
+                                  )}
+                                  {user.isActive ? 'Active' : 'Inactive'}
+                                </span>
+                                {user.isVerified && (
+                                  <span className="text-xs bg-green-100 text-green-800 px-2 py-1 rounded-full">
+                                    Verified
                                   </span>
                                 )}
                               </div>
-                              <div>
-                                <div className="font-medium text-gray-900">{user.name}</div>
-                                <div className="text-sm text-gray-500">
-                                  {user.createdAt ? `Joined ${formatDate(user.createdAt)}` : 'No join date'}
-                                </div>
-                              </div>
                             </div>
-                          </td>
-                          <td className="py-4 px-6">
-                            <div className="space-y-2">
-                              <div className="flex items-center">
-                                <span className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-medium ${getRoleColor(user.role)}`}>
-                                  {getRoleIcon(user.role)}
-                                  <span className="ml-1.5 capitalize">{user.role}</span>
-                                </span>
-                              </div>
-                              {user.clinicName && (
-                                <div className="text-sm text-gray-600 flex items-center">
-                                  <Building className="h-3 w-3 mr-1" />
-                                  {user.clinicName}
-                                </div>
-                              )}
-                              {user.patients && user.patients.length > 0 && (
-                                <div className="text-sm text-gray-600">
-                                  {user.patients.length} patient{user.patients.length !== 1 ? 's' : ''}
-                                </div>
-                              )}
+                          </div>
+                          <div className="flex flex-col items-end">
+                            <div className="text-xs text-gray-500 mb-1">
+                              <Clock className="h-3 w-3 inline mr-1" />
+                              {formatDate(user.createdAt)}
                             </div>
-                          </td>
-                          <td className="py-4 px-6">
-                            <span className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-medium ${getStatusColor(user)}`}>
-                              {getStatusIcon(user)}
-                              <span className="ml-1.5">{getStatusText(user)}</span>
-                            </span>
-                          </td>
-                          <td className="py-4 px-6">
-                            <div className="space-y-2">
-                              <div className="flex items-center text-sm text-gray-600">
-                                <Mail className="h-3 w-3 mr-2" />
-                                {user.email}
-                              </div>
+                            <ChevronRight className="h-4 w-4 text-gray-400 group-hover:text-blue-500" />
+                          </div>
+                        </div>
+                        
+                        {/* Additional user info */}
+                        {(user.phone || user.clinicName || user.address) && (
+                          <div className="mt-2 pt-2 border-t border-gray-100">
+                            <div className="flex flex-wrap gap-2 text-xs text-gray-600">
                               {user.phone && (
-                                <div className="flex items-center text-sm text-gray-600">
-                                  <Phone className="h-3 w-3 mr-2" />
+                                <div className="flex items-center">
+                                  <Phone className="h-3 w-3 mr-1" />
                                   {user.phone}
                                 </div>
                               )}
-                              {user.lastLogin && (
-                                <div className="flex items-center text-sm text-gray-600">
-                                  <Clock className="h-3 w-3 mr-2" />
-                                  Last login: {formatDate(user.lastLogin)}
+                              {user.clinicName && (
+                                <div className="flex items-center">
+                                  <Building className="h-3 w-3 mr-1" />
+                                  <span className="truncate max-w-[150px]">{user.clinicName}</span>
+                                </div>
+                              )}
+                              {user.address && (
+                                <div className="flex items-center">
+                                  <MapPin className="h-3 w-3 mr-1" />
+                                  <span className="truncate max-w-[150px]">{user.address}</span>
                                 </div>
                               )}
                             </div>
-                          </td>
-                          <td className="py-4 px-6">
-                            <div className="flex items-center space-x-2" onClick={(e) => e.stopPropagation()}>
-                              {!user.isDeleted && (
-                                <>
-                                  <Button
-                                    variant="ghost"
-                                    size="sm"
-                                    className="hover:bg-gray-100 text-gray-600 hover:text-gray-900"
-                                    onClick={() => handleViewUser(user.id, user.role)}
-                                  >
-                                    <Eye className="h-4 w-4" />
-                                  </Button>
-                                  <Button
-                                    variant="ghost"
-                                    size="sm"
-                                    className="hover:bg-blue-50 text-blue-600 hover:text-blue-700"
-                                    onClick={(e) => handleEditUser(user.id, e)}
-                                  >
-                                    <Edit className="h-4 w-4" />
-                                  </Button>
-                                  <Button
-                                    variant="ghost"
-                                    size="sm"
-                                    className="hover:bg-emerald-50 text-emerald-600 hover:text-emerald-700"
-                                    onClick={(e) => handleToggleStatus(user.id, user.isActive, e)}
-                                    disabled={user.isDeleted}
-                                  >
-                                    {user.isActive ? (
-                                      <UserX className="h-4 w-4" />
-                                    ) : (
-                                      <UserCheck className="h-4 w-4" />
-                                    )}
-                                  </Button>
-                                </>
-                              )}
-                              <Button
-                                variant="ghost"
-                                size="sm"
-                                className="hover:bg-red-50 text-red-600 hover:text-red-700"
-                                onClick={(e) => handleDeleteUser(user.id, e)}
-                                disabled={user.isDeleted}
-                              >
-                                <Trash2 className="h-4 w-4" />
-                              </Button>
-                            </div>
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-              )}
-
-              {/* Pagination */}
-              {filteredUsers.length > 0 && (
-                <div className="border-t border-gray-100 px-6 py-4">
-                  <div className="flex items-center justify-between">
-                    <div className="text-sm text-gray-600">
-                      Showing 1-{Math.min(filteredUsers.length, 10)} of {filteredUsers.length} users
-                    </div>
-                    <div className="flex items-center space-x-2">
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        className="border-gray-300 hover:bg-gray-50"
-                        onClick={() => loadUsers()}
-                      >
-                        <RefreshCw className="h-4 w-4 mr-2" />
-                        Refresh
-                      </Button>
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        className="border-gray-300"
-                      >
-                        <Download className="h-4 w-4 mr-2" />
-                        Export
-                      </Button>
-                    </div>
+                          </div>
+                        )}
+                      </div>
+                    ))}
                   </div>
-                </div>
-              )}
-            </CardContent>
-          </Card>
+                )}
+              </CardContent>
+            </Card>
+          </div>
 
           {/* Quick Actions */}
           <div className="mt-8 grid grid-cols-1 md:grid-cols-3 gap-4">
-            <Card className="border border-gray-200 hover:border-blue-300 cursor-pointer transition-colors">
+            <Card 
+              className="cursor-pointer hover:border-blue-300 transition-colors"
+              onClick={handleExportData}
+              role="button"
+              tabIndex={0}
+              onKeyDown={(e) => e.key === 'Enter' && handleExportData()}
+            >
               <CardContent className="p-6">
                 <div className="flex items-center space-x-3">
                   <div className="h-10 w-10 rounded-lg bg-blue-100 flex items-center justify-center">
                     <Download className="h-5 w-5 text-blue-600" />
                   </div>
                   <div>
-                    <h3 className="font-medium text-gray-900">Export User Data</h3>
+                    <h3 className="font-medium">Export Data</h3>
                     <p className="text-sm text-gray-600">Download user list as CSV</p>
                   </div>
                 </div>
@@ -799,36 +921,97 @@ export default function AdminUsersPage() {
             </Card>
 
             <Card 
-              className="border border-gray-200 hover:border-teal-300 cursor-pointer transition-colors"
-              onClick={handleCreateUser}
+              className="cursor-pointer hover:border-teal-300 transition-colors"
+              onClick={() => router.push('/dashboard/admin/settings/invitations')}
+              role="button"
+              tabIndex={0}
+              onKeyDown={(e) => e.key === 'Enter' && router.push('/dashboard/admin/settings/invitations')}
             >
               <CardContent className="p-6">
                 <div className="flex items-center space-x-3">
                   <div className="h-10 w-10 rounded-lg bg-teal-100 flex items-center justify-center">
-                    <UserPlus className="h-5 w-5 text-teal-600" />
+                    <Bell className="h-5 w-5 text-teal-600" />
                   </div>
                   <div>
-                    <h3 className="font-medium text-gray-900">Create New User</h3>
-                    <p className="text-sm text-gray-600">Add clinician, guardian, or admin</p>
+                    <h3 className="font-medium">Invitations</h3>
+                    <p className="text-sm text-gray-600">{stats.pendingInvites} pending</p>
                   </div>
                 </div>
               </CardContent>
             </Card>
 
-            <Card className="border border-gray-200 hover:border-amber-300 cursor-pointer transition-colors">
+            <Card 
+              className="cursor-pointer hover:border-amber-300 transition-colors"
+              onClick={() => router.push('/dashboard/admin/activity')}
+              role="button"
+              tabIndex={0}
+              onKeyDown={(e) => e.key === 'Enter' && router.push('/dashboard/admin/activity')}
+            >
               <CardContent className="p-6">
                 <div className="flex items-center space-x-3">
                   <div className="h-10 w-10 rounded-lg bg-amber-100 flex items-center justify-center">
                     <Activity className="h-5 w-5 text-amber-600" />
                   </div>
                   <div>
-                    <h3 className="font-medium text-gray-900">View Activity Logs</h3>
-                    <p className="text-sm text-gray-600">Monitor user actions and system events</p>
+                    <h3 className="font-medium">Activity Logs</h3>
+                    <p className="text-sm text-gray-600">{stats.recentActivity} recent actions</p>
                   </div>
                 </div>
               </CardContent>
             </Card>
           </div>
+
+          {/* System Status */}
+          <Card className={`mt-8 border ${
+            stats.systemHealth === 'good' 
+              ? 'bg-gradient-to-r from-emerald-50 to-green-50 border-emerald-200' 
+              : stats.systemHealth === 'warning'
+              ? 'bg-gradient-to-r from-amber-50 to-orange-50 border-amber-200'
+              : 'bg-gradient-to-r from-red-50 to-pink-50 border-red-200'
+          }`}>
+            <CardContent className="p-6">
+              <div className="flex items-center justify-between">
+                <div className="flex-1">
+                  <h3 className="font-semibold mb-2 flex items-center">
+                    <UserCog className="h-5 w-5 mr-2" />
+                    System Status
+                  </h3>
+                  <p className="text-sm text-gray-600 mb-4">User management overview</p>
+                  <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                    <div className="text-center p-3 bg-white rounded-lg shadow-sm">
+                      <div className="text-2xl font-bold text-gray-900">{stats.total}</div>
+                      <div className="text-xs text-gray-600 mt-1">Total Users</div>
+                    </div>
+                    <div className="text-center p-3 bg-white rounded-lg shadow-sm">
+                      <div className="text-2xl font-bold text-emerald-600">{stats.active}</div>
+                      <div className="text-xs text-gray-600 mt-1">Active</div>
+                    </div>
+                    <div className="text-center p-3 bg-white rounded-lg shadow-sm">
+                      <div className="text-2xl font-bold text-red-600">{stats.inactive}</div>
+                      <div className="text-xs text-gray-600 mt-1">Inactive</div>
+                    </div>
+                    <div className="text-center p-3 bg-white rounded-lg shadow-sm">
+                      <div className="text-2xl font-bold text-gray-600">{stats.deleted}</div>
+                      <div className="text-xs text-gray-600 mt-1">Archived</div>
+                    </div>
+                  </div>
+                  <div className="mt-4 pt-4 border-t border-blue-200">
+                    <div className="text-xs flex items-center">
+                      <RefreshCw className="h-3 w-3 mr-1" />
+                      Last updated: {new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                    </div>
+                  </div>
+                </div>
+                <div className={`h-16 w-16 rounded-full bg-white flex items-center justify-center shadow-sm ml-6 ${
+                  stats.systemHealth === 'good' ? 'text-emerald-600' : 
+                  stats.systemHealth === 'warning' ? 'text-amber-600' : 
+                  'text-red-600'
+                }`}>
+                  <UserCog className="h-8 w-8" />
+                </div>
+              </div>
+            </CardContent>
+          </Card>
         </div>
       </div>
     </RoleProtectedLayout>

@@ -606,11 +606,11 @@ export interface AdminStats {
   totalGuardians: number;
   totalAdmins: number;
   pendingInvitations: number;
-  recentActivity: number; // Last 7 days
+  recentActivity: number;
   systemHealth: 'good' | 'warning' | 'critical';
-  storageUsage?: number;
-  activeSessions?: number;
-  errorRate?: number;
+  activeUsers?: number;
+  inactiveUsers?: number;
+  deletedUsers?: number;
 }
 
 // ========== FORM DATA TYPES ==========
@@ -699,6 +699,7 @@ export interface PaginatedResponse<T> {
   pageSize: number;
   hasMore: boolean;
   totalPages: number;
+  
 }
 
 export interface CreateUserAccountResponse {
@@ -1588,3 +1589,5 @@ export function isGetUsersByRoleOptions(obj: any): obj is GetUsersByRoleOptions 
     'sortOrder' in obj
   );
 }
+
+
