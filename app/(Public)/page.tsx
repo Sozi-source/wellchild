@@ -33,7 +33,7 @@ export default function LandingPage() {
   const [activeRole, setActiveRole] = useState<'clinician' | 'parent'>('clinician');
 
   const handleGetStarted = () => {
-    router.push('/signup');
+    router.push('/register');
   };
 
   const handleLogin = () => {
@@ -148,13 +148,13 @@ export default function LandingPage() {
               <Link href="/" className="text-sm font-medium text-gray-700 hover:text-blue-600 transition-colors">
                 Home
               </Link>
-              <Link href="/features" className="text-sm font-medium text-gray-700 hover:text-blue-600 transition-colors">
+              <Link href="#" className="text-sm font-medium text-gray-700 hover:text-blue-600 transition-colors">
                 Features
               </Link>
-              <Link href="/pricing" className="text-sm font-medium text-gray-700 hover:text-blue-600 transition-colors">
+              <Link href="#" className="text-sm font-medium text-gray-700 hover:text-blue-600 transition-colors">
                 Pricing
               </Link>
-              <Link href="/contact" className="text-sm font-medium text-gray-700 hover:text-blue-600 transition-colors">
+              <Link href="#" className="text-sm font-medium text-gray-700 hover:text-blue-600 transition-colors">
                 Contact
               </Link>
             </div>
@@ -471,9 +471,6 @@ export default function LandingPage() {
                 Sign In
               </button>
             </div>
-            <p className="mt-6 text-blue-200 text-sm">
-              No credit card required • HIPAA-compliant • 14-day free trial
-            </p>
           </div>
         </div>
       </section>
@@ -500,27 +497,27 @@ export default function LandingPage() {
             <div>
               <h3 className="font-semibold text-white mb-4">Product</h3>
               <ul className="space-y-2">
-                <li><Link href="/features" className="text-gray-400 hover:text-white transition-colors">Features</Link></li>
-                <li><Link href="/pricing" className="text-gray-400 hover:text-white transition-colors">Pricing</Link></li>
-                <li><Link href="/security" className="text-gray-400 hover:text-white transition-colors">Security</Link></li>
+                <li><Link href="#" className="text-gray-400 hover:text-white transition-colors">Features</Link></li>
+                <li><Link href="#" className="text-gray-400 hover:text-white transition-colors">Pricing</Link></li>
+                <li><Link href="#" className="text-gray-400 hover:text-white transition-colors">Security</Link></li>
               </ul>
             </div>
             
             <div>
               <h3 className="font-semibold text-white mb-4">Company</h3>
               <ul className="space-y-2">
-                <li><Link href="/about" className="text-gray-400 hover:text-white transition-colors">About</Link></li>
-                <li><Link href="/contact" className="text-gray-400 hover:text-white transition-colors">Contact</Link></li>
-                <li><Link href="/blog" className="text-gray-400 hover:text-white transition-colors">Blog</Link></li>
+                <li><Link href="#" className="text-gray-400 hover:text-white transition-colors">About</Link></li>
+                <li><Link href="#" className="text-gray-400 hover:text-white transition-colors">Contact</Link></li>
+                <li><Link href="#" className="text-gray-400 hover:text-white transition-colors">Blog</Link></li>
               </ul>
             </div>
             
             <div>
               <h3 className="font-semibold text-white mb-4">Legal</h3>
               <ul className="space-y-2">
-                <li><Link href="/privacy" className="text-gray-400 hover:text-white transition-colors">Privacy</Link></li>
-                <li><Link href="/terms" className="text-gray-400 hover:text-white transition-colors">Terms</Link></li>
-                <li><Link href="/hipaa" className="text-gray-400 hover:text-white transition-colors">HIPAA Compliance</Link></li>
+                <li><Link href="#" className="text-gray-400 hover:text-white transition-colors">Privacy</Link></li>
+                <li><Link href="#" className="text-gray-400 hover:text-white transition-colors">Terms</Link></li>
+                <li><Link href="#" className="text-gray-400 hover:text-white transition-colors">HIPAA Compliance</Link></li>
               </ul>
             </div>
           </div>
