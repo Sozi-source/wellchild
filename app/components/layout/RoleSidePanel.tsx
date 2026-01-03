@@ -124,37 +124,37 @@ export default function RoleSidePanel() {
             id: 'patients',
             label: 'My Patients',
             icon: <Users className="h-5 w-5" />,
-            path: '/dashboard/clinician/patients',
+            path: '/dashboard/clinicians/children',
           },
           {
             id: 'appointments',
             label: 'Appointments',
             icon: <Calendar className="h-5 w-5" />,
-            path: '/dashboard/clinician/appointments',
+            path: '/dashboard/clinicians/appointments',
           },
           {
             id: 'records',
             label: 'Medical Records',
             icon: <ClipboardList className="h-5 w-5" />,
-            path: '/dashboard/clinician/records',
+            path: '/dashboard/clinicians/records',
           },
           {
             id: 'prescriptions',
             label: 'Prescriptions',
             icon: <Pill className="h-5 w-5" />,
-            path: '/dashboard/clinician/prescriptions',
+            path: '/dashboard/clinicians/prescriptions',
           },
           {
             id: 'analytics',
             label: 'Analytics',
             icon: <BarChart3 className="h-5 w-5" />,
-            path: '/dashboard/clinician/analytics',
+            path: '/dashboard/clinicians/analytics',
           },
           {
             id: 'messages',
             label: 'Messages',
             icon: <MessageSquare className="h-5 w-5" />,
-            path: '/dashboard/clinician/messages',
+            path: '/dashboard/clinicians/messages',
           }
         ];
       case 'admin':
@@ -245,13 +245,13 @@ export default function RoleSidePanel() {
             id: 'patients',
             label: 'Patients',
             icon: <Users className="h-5 w-5" />,
-            path: '/dashboard/clinician/patients',
+            path: '/dashboard/clinicians/children',
           },
           {
             id: 'appointments',
             label: 'Appointments',
             icon: <Calendar className="h-5 w-5" />,
-            path: '/dashboard/clinician/appointments',
+            path: '/dashboard/clinicians/appointments',
           },
           {
             id: 'messages',
