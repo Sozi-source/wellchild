@@ -1,4 +1,4 @@
-// app/components/layout/DashboardPageLayout.tsx - Optimized
+// app/components/layout/DashboardPageLayout.tsx - Fixed
 "use client";
 
 import { ReactNode } from 'react';
@@ -50,15 +50,21 @@ export default function DashboardPageLayout({
         {/* Fixed Header */}
         {showHeader && (
           <div className="sticky top-0 z-30 bg-white border-b border-gray-200 shadow-sm">
-            <DashboardHeader
-              title={title}
-              subtitle={subtitle}
-              showBackButton={showBackButton}
-              showSearch={showSearch}
-              onBack={onBack}
-              actions={headerActions}
-              hasSidePanel={showSidePanel}
-            />
+            <div className="flex items-center justify-between px-4 sm:px-6 lg:px-8 py-4">
+              <DashboardHeader
+                title={title}
+                subtitle={subtitle}
+                showBackButton={showBackButton}
+                showSearch={showSearch}
+                onBack={onBack}
+              />
+              
+              {headerActions && (
+                <div className="flex items-center space-x-3 ml-4">
+                  {headerActions}
+                </div>
+              )}
+            </div>
           </div>
         )}
         
