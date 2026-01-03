@@ -3,20 +3,40 @@
 
 import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import RoleProtectedLayout from '@/app/components/layout/RoleProtectedLayout';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/app/components/ui/Card';
+import { cn } from '@/app/lib/utils';
+import RootDashboardLayout from '@/app/components/layout/RootDashboardLayout';
 import { Button } from '@/app/components/ui/Button';
 import { Badge } from '@/app/components/ui/Badge';
+import { Card, CardContent, CardHeader, CardTitle } from '@/app/components/ui/Card';
 import LoadingSpinner from '@/app/components/common/LoadingSpinner';
-import { StatsCard } from '@/app/components/common/StatsCard';
-import { QuickActionCard } from '@/app/components/common/QuickActionCard';
 import { useAuth } from '@/app/context/AuthContext';
 import * as AppServices from '@/app/services/app.services';
 import type { HealthcarePatient } from '@/app/types/app.types';
+import {
+  Calendar,
+  Heart,
+  Bell,
+  Syringe,
+  User,
+  ArrowRight,
+  TrendingUp,
+  FileText,
+  MessageSquare,
+  Shield,
+  Plus,
+  ChevronRight,
+  Clock,
+  Activity,
+  Baby,
+  Users,
+  AlertTriangle,
+  CheckCircle
+} from 'lucide-react';
 
 export default function GuardianDashboardPage() {
   const { userProfile } = useAuth();
   const router = useRouter();
+   const [isUnfinished] = useState(true); 
   const [children, setChildren] = useState<HealthcarePatient[]>([]);
   const [stats, setStats] = useState<any>(null);
   const [loading, setLoading] = useState(true);
@@ -47,221 +67,415 @@ export default function GuardianDashboardPage() {
   };
 
   const handleViewChild = (childId: string) => {
-    router.push(`/guardian/children/${childId}`);
+    router.push(`/dashboard/guardian/children/${childId}`);
   };
 
   if (loading) {
     return (
-      <RoleProtectedLayout allowedRoles={['guardian']}>
-        <div className="min-h-screen flex items-center justify-center">
+      <RootDashboardLayout>
+        <div className="min-h-[60vh] flex items-center justify-center">
           <LoadingSpinner size="lg" />
         </div>
-      </RoleProtectedLayout>
+      </RootDashboardLayout>
     );
   }
 
   return (
-    <RoleProtectedLayout allowedRoles={['guardian']}>
-      <div className="container mx-auto px-4 py-8 mt-5">
-        <h1 className="text-3xl font-bold text-gray-900 mb-2">
-          Welcome, {userProfile?.name}
-        </h1>
-        <p className="text-gray-600 mb-8">Your Children's Health Dashboard</p>
-
-        {/* Stats */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-          <StatsCard
-            title="My Children"
-            value={children.length}
-            description="Under your care"
-            icon="👶"
-          />
-          <StatsCard
-            title="Upcoming Appointments"
-            value={stats?.upcomingAppointments || 0}
-            description="Scheduled visits"
-            icon="📅"
-          />
-          <StatsCard
-            title="Health Alerts"
-            value={stats?.healthAlerts || 0}
-            description="Require attention"
-            icon="⚠️"
-          />
-          <StatsCard
-            title="Vaccinations Due"
-            value={stats?.vaccinationDue || 0}
-            description="Immunizations pending"
-            icon="💉"
-          />
-        </div>
-
-        {/* Quick Actions */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
-          <QuickActionCard
-            title="View All Children"
-            description="Check all your children's health records"
-            icon="📋"
-            onClick={() => router.push('/dashboard/guardian/children')}
-          />
-          <QuickActionCard
-            title="Upcoming Appointments"
-            description="View and manage upcoming visits"
-            icon="📅"
-            onClick={() => router.push('/guardian/appointments')}
-          />
-          <QuickActionCard
-            title="Health Alerts"
-            description="Review important health notifications"
-            icon="🔔"
-            onClick={() => router.push('/guardian/alerts')}
-          />
-        </div>
-
-        {/* Children List */}
-        <Card>
-          <CardHeader>
-            <CardTitle>My Children ({children.length})</CardTitle>
-            <CardDescription>Children under your guardianship</CardDescription>
-          </CardHeader>
-          <CardContent>
-            {children.length === 0 ? (
-              <div className="text-center py-12">
-                <div className="text-5xl mb-4">👶</div>
-                <h3 className="text-xl font-medium mb-2">No Children Assigned</h3>
-                <p className="text-gray-600 mb-6">
-                  Children will appear here once a clinician enrolls them and invites you.
-                </p>
-                <Button onClick={() => router.push('/guardian/invitations')}>
-                  Check Invitations
-                </Button>
+    <>
+      {/* Enhanced Welcome Section */}
+      <div className="mb-8">
+        <div className="bg-gradient-to-r from-blue-50 to-indigo-50 rounded-2xl p-6 md:p-8 border border-blue-100">
+          <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-6">
+            <div className="flex-1">
+              <div className="flex items-center gap-3 mb-4">
+                <div className="p-3 bg-white rounded-xl shadow-sm">
+                  <Heart className="h-8 w-8 text-blue-600" />
+                </div>
+                <div>
+                  <h1 className="text-2xl md:text-3xl font-bold text-gray-900">
+                    Welcome back, {userProfile?.name}!
+                  </h1>
+                  <p className="text-gray-600 mt-1">
+                    Track your child's health here !
+                  </p>
+                </div>
               </div>
-            ) : (
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                {children.map(child => (
-                  <Card key={child.id} className="hover:shadow-lg transition-shadow">
-                    <CardContent className="pt-6">
-                      <div className="flex items-start justify-between mb-4">
-                        <div className="flex items-center gap-3">
-                          {child.photoUrl ? (
-                            <img
-                              src={child.photoUrl}
-                              alt={child.name}
-                              className="w-12 h-12 rounded-full"
-                            />
-                          ) : (
-                            <div className="w-12 h-12 rounded-full bg-blue-100 flex items-center justify-center">
-                              <span className="text-lg text-blue-600 font-medium">
-                                {child.name.charAt(0)}
-                              </span>
-                            </div>
-                          )}
-                          <div>
-                            <h3 className="font-bold">{child.name}</h3>
-                            <p className="text-sm text-gray-600">
-                              {AppServices.calculateAgeString(child.dob)}
-                            </p>
-                          </div>
-                        </div>
-                        <Badge variant={
-                          child.growthStatus === 'normal' ? 'success' :
-                          child.growthStatus === 'warning' ? 'warning' : 'destructive'
-                        }>
-                          {child.growthStatus}
-                        </Badge>
-                      </div>
-
-                      <div className="space-y-2 text-sm mb-4">
-                        <div className="flex justify-between">
-                          <span className="text-gray-600">MR#:</span>
-                          <span>{child.medicalRecordNumber}</span>
-                        </div>
-                        <div className="flex justify-between">
-                          <span className="text-gray-600">Last Checkup:</span>
-                          <span>{child.lastCheckup ? AppServices.formatDate(child.lastCheckup) : 'Never'}</span>
-                        </div>
-                        <div className="flex justify-between">
-                          <span className="text-gray-600">Clinicians:</span>
-                          <span>{child.clinicianIds.length}</span>
-                        </div>
-                      </div>
-
-                      <div className="flex gap-2 pt-4 border-t">
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          className="flex-1"
-                          onClick={() => handleViewChild(child.id)}
-                        >
-                          View Profile
-                        </Button>
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          className="flex-1"
-                          onClick={() => router.push(`/dashboard/guardian/children/${child.id}/growth`)}
-                        >
-                          Growth
-                        </Button>
-                      </div>
-                    </CardContent>
-                  </Card>
-                ))}
+              
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mt-6">
+                <div className="bg-white/80 rounded-lg p-3 border border-blue-100">
+                  <p className="text-xs text-gray-500">Children</p>
+                  <p className="text-2xl font-bold text-gray-900">{children.length}</p>
+                </div>
+                <div className="bg-white/80 rounded-lg p-3 border border-blue-100">
+                  <p className="text-xs text-gray-500">Active Alerts</p>
+                  <p className="text-2xl font-bold text-red-600">{stats?.healthAlerts || 0}</p>
+                </div>
+                <div className="bg-white/80 rounded-lg p-3 border border-blue-100">
+                  <p className="text-xs text-gray-500">Appointments</p>
+                  <p className="text-2xl font-bold text-blue-600">{stats?.upcomingAppointments || 0}</p>
+                </div>
+                <div className="bg-white/80 rounded-lg p-3 border border-blue-100">
+                  <p className="text-xs text-gray-500">Vaccinations Due</p>
+                  <p className="text-2xl font-bold text-amber-600">{stats?.vaccinationDue || 0}</p>
+                </div>
               </div>
-            )}
+            </div>
+            
+            <div className="flex gap-3">
+              <Button 
+                onClick={isUnfinished? () => router.push('/dashboard/guardian/appointments'): undefined}
+                className="bg-white text-blue-600 hover:bg-blue-50 border border-blue-200"
+              >
+                <Calendar className="h-4 w-4 mr-2" />
+                Schedule Visit
+              </Button>
+              <Button 
+                onClick={() => router.push('/dashboard/guardian/children')}
+                className="bg-blue-600 hover:bg-blue-700 text-white"
+              >
+                View All Children
+                <ArrowRight className="h-4 w-4 ml-2" />
+              </Button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Quick Actions Grid */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
+        <Card className="hover:shadow-md transition-shadow cursor-pointer" onClick={() => router.push('/dashboard/guardian/children')}>
+          <CardContent className="p-5">
+            <div className="flex items-center justify-between">
+              <div>
+                <div className="p-2 bg-blue-100 rounded-lg w-fit mb-3">
+                  <Users className="h-6 w-6 text-blue-600" />
+                </div>
+                <h3 className="font-semibold text-gray-900">My Children</h3>
+                <p className="text-sm text-gray-500 mt-1">View all children</p>
+              </div>
+              <ChevronRight className="h-5 w-5 text-gray-400" />
+            </div>
           </CardContent>
         </Card>
 
-        {/* Recent Activity */}
-        <Card className="mt-8">
-          <CardHeader>
-            <CardTitle>Recent Activity</CardTitle>
-            <CardDescription>Latest updates about your children</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-4">
-              {children.length > 0 ? (
-                children.flatMap(child => [
-                  {
-                    child: child.name,
-                    activity: 'Growth measurements updated',
-                    time: '2 days ago',
-                    type: 'growth'
-                  },
-                  {
-                    child: child.name,
-                    activity: 'Appointment scheduled',
-                    time: '1 week ago',
-                    type: 'appointment'
-                  }
-                ]).slice(0, 5).map((activity, index) => (
-                  <div key={index} className="flex items-center justify-between py-3 border-b last:border-0">
-                    <div className="flex items-center gap-3">
-                      <div className={`w-8 h-8 rounded-full flex items-center justify-center ${
-                        activity.type === 'growth' ? 'bg-green-100 text-green-600' :
-                        activity.type === 'appointment' ? 'bg-blue-100 text-blue-600' :
-                        'bg-yellow-100 text-yellow-600'
-                      }`}>
-                        {activity.type === 'growth' ? '📈' :
-                         activity.type === 'appointment' ? '📅' : '⚠️'}
-                      </div>
-                      <div>
-                        <span className="font-medium">{activity.child}</span>
-                        <span className="text-gray-600 ml-2">{activity.activity}</span>
-                      </div>
-                    </div>
-                    <span className="text-sm text-gray-500">{activity.time}</span>
-                  </div>
-                ))
-              ) : (
-                <p className="text-gray-600 text-center py-4">
-                  No recent activity. Updates will appear here when available.
-                </p>
-              )}
+        <Card className="hover:shadow-md transition-shadow cursor-pointer" onClick={isUnfinished? () => router.push('/dashboard/guardian/appointments'):undefined}>
+          <CardContent className="p-5">
+            <div className="flex items-center justify-between">
+              <div>
+                <div className="p-2 bg-green-100 rounded-lg w-fit mb-3">
+                  <Calendar className="h-6 w-6 text-green-600" />
+                </div>
+                <h3 className="font-semibold text-gray-900">Appointments</h3>
+                <p className="text-sm text-gray-500 mt-1">Manage visits</p>
+              </div>
+              <ChevronRight className="h-5 w-5 text-gray-400" />
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card className="hover:shadow-md transition-shadow cursor-pointer" onClick={isUnfinished? () => router.push('/dashboard/guardian/notifications'):undefined}>
+          <CardContent className="p-5">
+            <div className="flex items-center justify-between">
+              <div>
+                <div className="p-2 bg-amber-100 rounded-lg w-fit mb-3">
+                  <Bell className="h-6 w-6 text-amber-600" />
+                </div>
+                <h3 className="font-semibold text-gray-900">Health Alerts</h3>
+                <p className="text-sm text-gray-500 mt-1">{stats?.healthAlerts || 0} active</p>
+              </div>
+              <ChevronRight className="h-5 w-5 text-gray-400" />
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card className="hover:shadow-md transition-shadow cursor-pointer" onClick={isUnfinished? () => router.push('/dashboard/guardian/vaccinations'):undefined}>
+          <CardContent className="p-5">
+            <div className="flex items-center justify-between">
+              <div>
+                <div className="p-2 bg-purple-100 rounded-lg w-fit mb-3">
+                  <Syringe className="h-6 w-6 text-purple-600" />
+                </div>
+                <h3 className="font-semibold text-gray-900">Vaccinations</h3>
+                <p className="text-sm text-gray-500 mt-1">{stats?.vaccinationDue || 0} due</p>
+              </div>
+              <ChevronRight className="h-5 w-5 text-gray-400" />
             </div>
           </CardContent>
         </Card>
       </div>
-    </RoleProtectedLayout>
+
+      {/* Children Section */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+        {/* Left: Children List */}
+        <div className="lg:col-span-2">
+          <Card>
+            <CardHeader className="border-b pb-4">
+              <div className="flex items-center justify-between">
+                <div>
+                  <CardTitle className="flex items-center gap-2">
+                    <Baby className="h-5 w-5 text-blue-600" />
+                    My Children ({children.length})
+                  </CardTitle>
+                  <p className="text-sm text-gray-500 mt-1">Children under your guardianship</p>
+                </div>
+                <Button 
+                  variant="outline" 
+                  size="sm"
+                  onClick={() => router.push('/dashboard/guardian/children')}
+                >
+                  View All
+                  <ArrowRight className="h-3 w-3 ml-1" />
+                </Button>
+              </div>
+            </CardHeader>
+            <CardContent className="p-6">
+              {children.length === 0 ? (
+                <div className="text-center py-12">
+                  <div className="w-20 h-20 mx-auto mb-4 rounded-full bg-blue-50 flex items-center justify-center">
+                    <Baby className="h-10 w-10 text-blue-400" />
+                  </div>
+                  <h3 className="text-xl font-semibold text-gray-900 mb-2">No Children Assigned</h3>
+                  <p className="text-gray-600 mb-6 max-w-md mx-auto">
+                    Children will appear here once a clinician enrolls them and invites you to their care team.
+                  </p>
+                  <div className="flex gap-3 justify-center">
+                    <Button variant="outline" onClick={isUnfinished? () => router.push('/dashboard/guardian/invitations'):undefined}>
+                      Check Invitations
+                    </Button>
+                    <Button onClick={() => router.push('/help')}>
+                      Learn More
+                    </Button>
+                  </div>
+                </div>
+              ) : (
+                <div className="space-y-4">
+                  {children.map((child) => (
+                    <div 
+                      key={child.id}
+                      className="group hover:bg-gray-50 p-4 rounded-xl border border-gray-200 transition-all cursor-pointer"
+                      onClick={() => handleViewChild(child.id)}
+                    >
+                      <div className="flex items-start gap-4">
+                        <div className="relative">
+                          {child.photoUrl ? (
+                            <img
+                              src={child.photoUrl}
+                              alt={child.name}
+                              className="w-16 h-16 rounded-full object-cover border-2 border-white shadow"
+                            />
+                          ) : (
+                            <div className="w-16 h-16 rounded-full bg-gradient-to-br from-blue-100 to-blue-200 flex items-center justify-center">
+                              <span className="text-2xl text-blue-700 font-bold">
+                                {child.name.charAt(0)}
+                              </span>
+                            </div>
+                          )}
+                          <div className={cn(
+                            "absolute -bottom-1 -right-1 w-5 h-5 rounded-full border-2 border-white",
+                            child.growthStatus === 'normal' ? 'bg-green-500' :
+                            child.growthStatus === 'warning' ? 'bg-yellow-500' : 'bg-red-500'
+                          )} />
+                        </div>
+                        
+                        <div className="flex-1">
+                          <div className="flex items-center justify-between mb-2">
+                            <div>
+                              <h3 className="font-bold text-gray-900 group-hover:text-blue-600 transition-colors">
+                                {child.name}
+                              </h3>
+                              <div className="flex items-center gap-2 mt-1">
+                                <span className="text-sm text-gray-600">
+                                  {AppServices.calculateAgeString(child.dob)}
+                                </span>
+                                <span className="text-gray-400">•</span>
+                                <span className="text-sm text-gray-600">
+                                  MR#{child.medicalRecordNumber}
+                                </span>
+                              </div>
+                            </div>
+                            <Badge variant={
+                              child.growthStatus === 'normal' ? 'success' :
+                              child.growthStatus === 'warning' ? 'warning' : 'destructive'
+                            }>
+                              {child.growthStatus}
+                            </Badge>
+                          </div>
+                          
+                          <div className="grid grid-cols-3 gap-4 mt-3">
+                            <div className="text-center">
+                              <p className="text-xs text-gray-500">Last Checkup</p>
+                              <p className="text-sm font-medium">
+                                {child.lastCheckup ? AppServices.formatDate(child.lastCheckup) : 'Never'}
+                              </p>
+                            </div>
+                            <div className="text-center">
+                              <p className="text-xs text-gray-500">Clinicians</p>
+                              <p className="text-sm font-medium">{child.clinicianIds.length}</p>
+                            </div>
+                            <div className="text-center">
+                              <p className="text-xs text-gray-500">Status</p>
+                              <p className={cn(
+                                "text-sm font-medium",
+                                child.growthStatus === 'normal' ? 'text-green-600' :
+                                child.growthStatus === 'warning' ? 'text-amber-600' : 'text-red-600'
+                              )}>
+                                {child.growthStatus?.toUpperCase()}
+                              </p>
+                            </div>
+                          </div>
+                          
+                          <div className="flex gap-2 mt-4">
+                            <Button 
+                              size="sm" 
+                              variant="outline"
+                              className="flex-1"
+                              onClick={isUnfinished? (e) => {
+                                e.stopPropagation();
+                                router.push(`/dashboard/guardian/children/${child.id}/growth`);
+                              }:undefined}
+                            >
+                              <TrendingUp className="h-3 w-3 mr-1" />
+                              Growth
+                            </Button>
+                            <Button 
+                              size="sm" 
+                              variant="outline"
+                              className="flex-1"
+                              onClick={isUnfinished? (e) => {
+                                e.stopPropagation();
+                                router.push(`/dashboard/guardian/children/${child.id}/records`);
+                              }:undefined}
+                            >
+                              <FileText className="h-3 w-3 mr-1" />
+                              Records
+                            </Button>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        </div>
+
+        {/* Right: Activity & Health Summary */}
+        <div className="space-y-6">
+          {/* Recent Activity */}
+          <Card>
+            <CardHeader className="pb-3">
+              <CardTitle className="flex items-center gap-2 text-base">
+                <Activity className="h-4 w-4 text-gray-500" />
+                Recent Activity
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-4">
+                {children.length > 0 ? (
+                  <>
+                    {[
+                      { child: children[0]?.name, activity: 'Growth measurements updated', time: '2 hours ago', icon: '📈' },
+                      { child: children[0]?.name, activity: 'Vaccination reminder', time: '1 day ago', icon: '💉' },
+                      { child: children[0]?.name, activity: 'Appointment confirmed', time: '3 days ago', icon: '📅' },
+                      { child: children[0]?.name, activity: 'Health report ready', time: '1 week ago', icon: '📋' },
+                    ].map((activity, index) => (
+                      <div key={index} className="flex items-start gap-3 p-3 hover:bg-gray-50 rounded-lg">
+                        <div className="w-8 h-8 rounded-full bg-blue-50 flex items-center justify-center text-lg">
+                          {activity.icon}
+                        </div>
+                        <div className="flex-1">
+                          <p className="text-sm font-medium text-gray-900">{activity.activity}</p>
+                          <p className="text-xs text-gray-500 mt-0.5">{activity.child} • {activity.time}</p>
+                        </div>
+                      </div>
+                    ))}
+                  </>
+                ) : (
+                  <div className="text-center py-6">
+                    <Clock className="h-12 w-12 text-gray-300 mx-auto mb-3" />
+                    <p className="text-gray-500 text-sm">No recent activity</p>
+                  </div>
+                )}
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Health Summary */}
+          <Card>
+            <CardHeader className="pb-3">
+              <CardTitle className="flex items-center gap-2 text-base">
+                <Heart className="h-4 w-4 text-red-500" />
+                Health Summary
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-4">
+                <div className="flex items-center justify-between p-3 bg-red-50 rounded-lg">
+                  <div className="flex items-center gap-3">
+                    <div className="w-8 h-8 rounded-full bg-red-100 flex items-center justify-center">
+                      <AlertTriangle className="h-4 w-4 text-red-600" />
+                    </div>
+                    <div>
+                      <p className="text-sm font-medium text-gray-900">Active Alerts</p>
+                      <p className="text-xs text-gray-600">Require attention</p>
+                    </div>
+                  </div>
+                  <Badge variant="destructive">{stats?.healthAlerts || 0}</Badge>
+                </div>
+
+                <div className="flex items-center justify-between p-3 bg-amber-50 rounded-lg">
+                  <div className="flex items-center gap-3">
+                    <div className="w-8 h-8 rounded-full bg-amber-100 flex items-center justify-center">
+                      <Syringe className="h-4 w-4 text-amber-600" />
+                    </div>
+                    <div>
+                      <p className="text-sm font-medium text-gray-900">Vaccinations Due</p>
+                      <p className="text-xs text-gray-600">Immunizations pending</p>
+                    </div>
+                  </div>
+                  <Badge variant="outline" className="bg-white">{stats?.vaccinationDue || 0}</Badge>
+                </div>
+
+                <div className="flex items-center justify-between p-3 bg-green-50 rounded-lg">
+                  <div className="flex items-center gap-3">
+                    <div className="w-8 h-8 rounded-full bg-green-100 flex items-center justify-center">
+                      <CheckCircle className="h-4 w-4 text-green-600" />
+                    </div>
+                    <div>
+                      <p className="text-sm font-medium text-gray-900">Up-to-date</p>
+                      <p className="text-xs text-gray-600">All clear</p>
+                    </div>
+                  </div>
+                  <Badge variant="success">{children.length}</Badge>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Quick Tips */}
+          <Card className="bg-gradient-to-br from-blue-50 to-indigo-50 border-blue-100">
+            <CardContent className="p-5">
+              <div className="flex items-start gap-3">
+                <div className="p-2 bg-white rounded-lg">
+                  <Shield className="h-5 w-5 text-blue-600" />
+                </div>
+                <div>
+                  <h3 className="font-semibold text-gray-900 mb-1">Health Tip</h3>
+                  <p className="text-sm text-gray-600">
+                    Regular growth tracking helps identify potential health issues early.
+                    Ensure your children have scheduled check-ups.
+                  </p>
+                  <Button variant="link" className="p-0 h-auto text-blue-600 hover:text-blue-700 mt-2">
+                    Learn more
+                    <ArrowRight className="h-3 w-3 ml-1" />
+                  </Button>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+      </div>
+    </>
   );
 }

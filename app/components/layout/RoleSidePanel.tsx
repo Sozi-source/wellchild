@@ -1,4 +1,3 @@
-// app/components/layout/RoleSidePanel.tsx - FIXED VERSION
 "use client";
 
 import { useState, useEffect, useRef } from 'react';
@@ -23,7 +22,6 @@ import {
   Heart,
   ClipboardList,
   TrendingUp,
-  Menu,
   Syringe,
   Database,
   AlertCircle,
@@ -33,8 +31,78 @@ import {
   Search,
   MessageSquare,
   X,
-  ChevronDown
+  ChevronDown,
+  Clock,
+  Lock
 } from 'lucide-react';
+
+// Feature flag configuration for all routes
+const FEATURE_FLAGS = {
+  guardian: {
+    dashboard: true,
+    activity: false,
+    notifications: false,
+    children: true,
+    appointments: false,
+    growth: false,
+    vaccinations: false,
+    records: false,
+    messages: false,
+  },
+  clinician: {
+    dashboard: true,
+    activity: false,
+    notifications: false,
+    patients: true,
+    appointments: false,
+    records: false,
+    prescriptions: false,
+    analytics: false,
+    messages: false,
+  },
+  admin: {
+    dashboard: true,
+    activity: false,
+    notifications: false,
+    users: true,
+    clinics: false,
+    reports: false,
+    audit: false,
+    settings: false,
+  }
+} as const;
+
+// Coming soon page component
+function ComingSoonToast({ label, onClose }: { label: string; onClose: () => void }) {
+  useEffect(() => {
+    const timer = setTimeout(onClose, 4000);
+    return () => clearTimeout(timer);
+  }, [onClose]);
+
+  return (
+    <div className="fixed top-4 right-4 z-50 animate-in slide-in-from-right-5">
+      <div className="bg-gradient-to-r from-blue-600 to-purple-600 text-white rounded-lg shadow-lg p-4 max-w-sm">
+        <div className="flex items-center">
+          <Clock className="h-5 w-5 mr-3 animate-pulse" />
+          <div className="flex-1">
+            <h4 className="font-semibold">{label}</h4>
+            <p className="text-sm opacity-90">This feature is coming soon!</p>
+            <div className="mt-2 h-1.5 w-full bg-white/30 rounded-full overflow-hidden">
+              <div className="h-full bg-white/70 rounded-full animate-progress" />
+            </div>
+          </div>
+          <button
+            onClick={onClose}
+            className="ml-3 text-white/80 hover:text-white"
+            aria-label="Close notification"
+          >
+            <X className="h-4 w-4" />
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
 
 export default function RoleSidePanel() {
   const { userProfile, logout } = useAuth();
@@ -45,240 +113,196 @@ export default function RoleSidePanel() {
   const [isMobile, setIsMobile] = useState(false);
   const [activeTab, setActiveTab] = useState('dashboard');
   const [mounted, setMounted] = useState(false);
+  const [toast, setToast] = useState<{ label: string } | null>(null);
   const dropdownRef = useRef<HTMLDivElement>(null);
 
-  // Move function declarations BEFORE useEffect that uses them
-  // Get navigation items function
+  const showComingSoonToast = (label: string) => {
+    setToast({ label });
+    // Also log for debugging
+    console.log(`Feature "${label}" is coming soon`);
+  };
+
+  // Get navigation items with proper availability
   const getNavigationItems = () => {
     if (!userProfile) return [];
     
-    const roleBasePath = `/dashboard/${userProfile.role}`;
+    const role = userProfile.role as keyof typeof FEATURE_FLAGS;
+    const roleBasePath = `/dashboard/${role}`;
     
-    const commonItems = [
+    const baseItems = [
       {
         id: 'dashboard',
         label: 'Dashboard',
         icon: <Home className="h-5 w-5" />,
         path: roleBasePath,
+        available: FEATURE_FLAGS[role]?.dashboard ?? true
       },
       {
         id: 'activity',
         label: 'Activity',
         icon: <Activity className="h-5 w-5" />,
         path: `${roleBasePath}/activity`,
+        available: FEATURE_FLAGS[role]?.activity ?? false
       },
       {
         id: 'notifications',
         label: 'Notifications',
         icon: <Bell className="h-5 w-5" />,
         path: `${roleBasePath}/notifications`,
-        badge: 3
+        badge: 3,
+        available: FEATURE_FLAGS[role]?.notifications ?? false,
       }
     ];
 
-    switch (userProfile.role) {
+    switch (role) {
       case 'guardian':
         return [
-          ...commonItems,
+          ...baseItems,
           {
             id: 'children',
             label: 'My Children',
             icon: <Baby className="h-5 w-5" />,
             path: '/dashboard/guardian/children',
+            available: FEATURE_FLAGS.guardian.children,
           },
           {
             id: 'appointments',
             label: 'Appointments',
             icon: <Calendar className="h-5 w-5" />,
             path: '/dashboard/guardian/appointments',
+            available: FEATURE_FLAGS.guardian.appointments,
           },
           {
             id: 'growth',
             label: 'Growth Charts',
             icon: <TrendingUp className="h-5 w-5" />,
             path: '/dashboard/guardian/growth',
+            available: FEATURE_FLAGS.guardian.growth,
           },
           {
             id: 'vaccinations',
             label: 'Vaccinations',
             icon: <Syringe className="h-5 w-5" />,
             path: '/dashboard/guardian/vaccinations',
+            available: FEATURE_FLAGS.guardian.vaccinations,
           },
           {
             id: 'records',
             label: 'Health Records',
             icon: <FileText className="h-5 w-5" />,
             path: '/dashboard/guardian/records',
+            available: FEATURE_FLAGS.guardian.records,
           },
           {
             id: 'messages',
             label: 'Messages',
             icon: <MessageSquare className="h-5 w-5" />,
             path: '/dashboard/guardian/messages',
+            available: FEATURE_FLAGS.guardian.messages,
           }
         ];
       case 'clinician':
         return [
-          ...commonItems,
+          ...baseItems,
           {
             id: 'patients',
             label: 'My Patients',
             icon: <Users className="h-5 w-5" />,
-            path: '/dashboard/clinicians/children',
+            path: '/dashboard/clinician/children',
+            available: FEATURE_FLAGS.clinician.patients,
           },
           {
             id: 'appointments',
             label: 'Appointments',
             icon: <Calendar className="h-5 w-5" />,
-            path: '/dashboard/clinicians/appointments',
+            path: '/dashboard/clinician/appointments',
+            available: FEATURE_FLAGS.clinician.appointments,
           },
           {
             id: 'records',
             label: 'Medical Records',
             icon: <ClipboardList className="h-5 w-5" />,
-            path: '/dashboard/clinicians/records',
+            path: '/dashboard/clinician/records',
+            available: FEATURE_FLAGS.clinician.records,
           },
           {
             id: 'prescriptions',
             label: 'Prescriptions',
             icon: <Pill className="h-5 w-5" />,
-            path: '/dashboard/clinicians/prescriptions',
+            path: '/dashboard/clinician/prescriptions',
+            available: FEATURE_FLAGS.clinician.prescriptions,
           },
           {
             id: 'analytics',
             label: 'Analytics',
             icon: <BarChart3 className="h-5 w-5" />,
-            path: '/dashboard/clinicians/analytics',
-          },
-          {
-            id: 'messages',
-            label: 'Messages',
-            icon: <MessageSquare className="h-5 w-5" />,
-            path: '/dashboard/clinicians/messages',
-          }
-        ];
-      case 'admin':
-        return [
-          ...commonItems,
-          {
-            id: 'users',
-            label: 'User Management',
-            icon: <Users className="h-5 w-5" />,
-            path: '/dashboard/admin/users',
-          },
-          {
-            id: 'clinics',
-            label: 'Clinic Management',
-            icon: <Building className="h-5 w-5" />,
-            path: '/dashboard/admin/clinics',
-          },
-          {
-            id: 'reports',
-            label: 'Reports & Analytics',
-            icon: <Database className="h-5 w-5" />,
-            path: '/dashboard/admin/reports',
-          },
-          {
-            id: 'audit',
-            label: 'Audit Logs',
-            icon: <AlertCircle className="h-5 w-5" />,
-            path: '/dashboard/admin/audit',
-          },
-          {
-            id: 'settings',
-            label: 'System Settings',
-            icon: <SettingsIcon className="h-5 w-5" />,
-            path: '/dashboard/admin/settings',
-          }
-        ];
-      default:
-        return commonItems;
-    }
-  };
-
-  // Mobile bottom navigation items
-  const getMobileNavItems = () => {
-    if (!userProfile) return [];
-    
-    const items = [
-      {
-        id: 'dashboard',
-        label: 'Home',
-        icon: <Home className="h-5 w-5" />,
-        path: `/dashboard/${userProfile.role}`,
-      },
-      {
-        id: 'search',
-        label: 'Search',
-        icon: <Search className="h-5 w-5" />,
-        path: `/dashboard/${userProfile.role}/search`,
-      },
-    ];
-
-    switch (userProfile.role) {
-      case 'guardian':
-        return [
-          ...items,
-          {
-            id: 'children',
-            label: 'Children',
-            icon: <Baby className="h-5 w-5" />,
-            path: '/dashboard/guardian/children',
-          },
-          {
-            id: 'appointments',
-            label: 'Appointments',
-            icon: <Calendar className="h-5 w-5" />,
-            path: '/dashboard/guardian/appointments',
-          },
-          {
-            id: 'messages',
-            label: 'Messages',
-            icon: <MessageSquare className="h-5 w-5" />,
-            path: '/dashboard/guardian/messages',
-          },
-        ];
-      case 'clinician':
-        return [
-          ...items,
-          {
-            id: 'patients',
-            label: 'Patients',
-            icon: <Users className="h-5 w-5" />,
-            path: '/dashboard/clinicians/children',
-          },
-          {
-            id: 'appointments',
-            label: 'Appointments',
-            icon: <Calendar className="h-5 w-5" />,
-            path: '/dashboard/clinicians/appointments',
+            path: '/dashboard/clinician/analytics',
+            available: FEATURE_FLAGS.clinician.analytics,
           },
           {
             id: 'messages',
             label: 'Messages',
             icon: <MessageSquare className="h-5 w-5" />,
             path: '/dashboard/clinician/messages',
-          },
+            available: FEATURE_FLAGS.clinician.messages,
+          }
         ];
       case 'admin':
         return [
-          ...items,
+          ...baseItems,
           {
             id: 'users',
-            label: 'Users',
+            label: 'User Management',
             icon: <Users className="h-5 w-5" />,
             path: '/dashboard/admin/users',
+            available: FEATURE_FLAGS.admin.users,
+          },
+          {
+            id: 'clinics',
+            label: 'Clinic Management',
+            icon: <Building className="h-5 w-5" />,
+            path: '/dashboard/admin/clinics',
+            available: FEATURE_FLAGS.admin.clinics,
+          },
+          {
+            id: 'reports',
+            label: 'Reports & Analytics',
+            icon: <Database className="h-5 w-5" />,
+            path: '/dashboard/admin/reports',
+            available: FEATURE_FLAGS.admin.reports,
+          },
+          {
+            id: 'audit',
+            label: 'Audit Logs',
+            icon: <AlertCircle className="h-5 w-5" />,
+            path: '/dashboard/admin/audit',
+            available: FEATURE_FLAGS.admin.audit,
           },
           {
             id: 'settings',
-            label: 'Settings',
+            label: 'System Settings',
             icon: <SettingsIcon className="h-5 w-5" />,
             path: '/dashboard/admin/settings',
-          },
+            available: FEATURE_FLAGS.admin.settings,
+          }
         ];
       default:
-        return items;
+        return baseItems;
     }
+  };
+
+  // Mobile bottom navigation items (only available features)
+  const getMobileNavItems = () => {
+    if (!userProfile) return [];
+    
+    const role = userProfile.role as keyof typeof FEATURE_FLAGS;
+    
+    // Only show available items on mobile bottom nav
+    const allItems = getNavigationItems();
+    const availableItems = allItems.filter(item => item.available);
+    
+    // Limit to max 4 items for mobile bottom nav
+    return availableItems.slice(0, 4);
   };
 
   // Role styles
@@ -293,7 +317,10 @@ export default function RoleSidePanel() {
         sidebarIconBg: 'bg-gray-800',
         badgeColor: 'bg-gray-500',
         iconColor: 'text-white',
-        accentBorder: 'border-gray-500'
+        accentBorder: 'border-gray-500',
+        pendingBg: 'bg-gray-800/50',
+        pendingText: 'text-gray-400',
+        pendingBorder: 'border-gray-700'
       };
     }
 
@@ -308,7 +335,10 @@ export default function RoleSidePanel() {
           sidebarIconBg: 'bg-blue-800',
           badgeColor: 'bg-blue-500',
           iconColor: 'text-white',
-          accentBorder: 'border-blue-500'
+          accentBorder: 'border-blue-500',
+          pendingBg: 'bg-slate-800/50',
+          pendingText: 'text-slate-400',
+          pendingBorder: 'border-slate-700'
         };
       case 'clinician':
         return {
@@ -320,7 +350,10 @@ export default function RoleSidePanel() {
           sidebarIconBg: 'bg-teal-800',
           badgeColor: 'bg-teal-500',
           iconColor: 'text-white',
-          accentBorder: 'border-teal-500'
+          accentBorder: 'border-teal-500',
+          pendingBg: 'bg-teal-800/50',
+          pendingText: 'text-teal-400',
+          pendingBorder: 'border-teal-700'
         };
       case 'guardian':
         return {
@@ -332,7 +365,10 @@ export default function RoleSidePanel() {
           sidebarIconBg: 'bg-sky-800',
           badgeColor: 'bg-sky-500',
           iconColor: 'text-white',
-          accentBorder: 'border-sky-500'
+          accentBorder: 'border-sky-500',
+          pendingBg: 'bg-sky-800/50',
+          pendingText: 'text-sky-400',
+          pendingBorder: 'border-sky-700'
         };
       default:
         return {
@@ -344,7 +380,10 @@ export default function RoleSidePanel() {
           sidebarIconBg: 'bg-gray-800',
           badgeColor: 'bg-gray-500',
           iconColor: 'text-white',
-          accentBorder: 'border-gray-500'
+          accentBorder: 'border-gray-500',
+          pendingBg: 'bg-gray-800/50',
+          pendingText: 'text-gray-400',
+          pendingBorder: 'border-gray-700'
         };
     }
   };
@@ -363,7 +402,6 @@ export default function RoleSidePanel() {
 
   const navigationItems = getNavigationItems();
   const mobileNavItems = getMobileNavItems();
-  const mobileDropdownItems = getNavigationItems(); // Same as navigationItems
   const roleStyles = getRoleStyles();
 
   // Set mounted state after component mounts (client-side only)
@@ -404,7 +442,7 @@ export default function RoleSidePanel() {
 
   // Update active tab based on pathname
   useEffect(() => {
-    if (!mounted) return;
+    if (!mounted || !userProfile) return;
     
     const currentItem = navigationItems.find(item => 
       pathname === item.path || pathname.startsWith(item.path + '/')
@@ -412,15 +450,15 @@ export default function RoleSidePanel() {
     if (currentItem) {
       setActiveTab(currentItem.id);
     }
-  }, [pathname, navigationItems, mounted]);
+  }, [pathname, navigationItems, mounted, userProfile]);
 
   const handleLogout = async () => {
     try {
       await logout();
-      window.location.href = '/login';
+      router.push('/login');
     } catch (error) {
       console.error('Logout failed:', error);
-      window.location.href = '/';
+      router.push('/');
     }
   };
 
@@ -428,7 +466,12 @@ export default function RoleSidePanel() {
     setCollapsed(!collapsed);
   };
 
-  const handleNavigation = (path: string, tabId: string) => {
+  const handleNavigation = (path: string, tabId: string, available: boolean = true, label: string = '') => {
+    if (!available) {
+      showComingSoonToast(label);
+      return;
+    }
+    
     setActiveTab(tabId);
     router.push(path);
     if (isMobile) {
@@ -439,12 +482,149 @@ export default function RoleSidePanel() {
   // Don't render anything during SSR or if no user profile
   if (!mounted || !userProfile) return null;
 
+  // Navigation item component
+  const renderNavItem = (item: any, isMobileBottomNav: boolean = false) => {
+    const isActive = activeTab === item.id;
+    const isPending = !item.available;
+    
+    // For mobile bottom nav (only available items should appear here)
+    if (isMobileBottomNav) {
+      return (
+        <button
+          key={item.id}
+          onClick={() => handleNavigation(item.path, item.id, item.available, item.label)}
+          className={cn(
+            "flex flex-col items-center justify-center p-2 rounded-lg transition-colors flex-1",
+            isActive ? "text-blue-600" : "text-gray-600 hover:text-gray-900"
+          )}
+        >
+          <div className={cn(
+            "p-2 rounded-full transition-colors",
+            isActive ? "bg-blue-50" : "bg-gray-50 hover:bg-gray-100"
+          )}>
+            {item.icon}
+          </div>
+          <span className="text-xs mt-1 font-medium truncate max-w-[80px]">
+            {item.label}
+          </span>
+        </button>
+      );
+    }
+    
+    // For desktop sidebar (show all items, disabled for unavailable)
+    if (isPending) {
+      return (
+        <div
+          key={item.id}
+          className={cn(
+            "w-full flex items-center rounded-lg px-3 py-3 font-medium transition-colors duration-200 relative group",
+            collapsed ? "justify-center" : "justify-start space-x-3",
+            roleStyles.pendingBg,
+            roleStyles.pendingText,
+            "cursor-not-allowed"
+          )}
+          title={collapsed ? `${item.label} (Coming Soon)` : undefined}
+          onClick={() => showComingSoonToast(item.label)}
+        >
+          {/* Coming soon indicator */}
+          <div className="relative opacity-60">
+            <div className="p-1.5 rounded-md">
+              {item.icon}
+            </div>
+            {item.badge && (
+              <span className={cn(
+                "absolute -top-1 -right-1 h-5 w-5 rounded-full text-xs flex items-center justify-center font-bold",
+                roleStyles.badgeColor
+              )}>
+                {item.badge}
+              </span>
+            )}
+          </div>
+          
+          {!collapsed && (
+            <>
+              <span className="flex-1 text-left text-sm font-medium opacity-75">
+                {item.label}
+              </span>
+              <span className="text-xs bg-amber-900/30 text-amber-300 px-2 py-1 rounded font-medium">
+                Soon
+              </span>
+            </>
+          )}
+          
+          {/* Tooltip for collapsed sidebar */}
+          {collapsed && (
+            <div className="absolute left-full ml-2 top-1/2 -translate-y-1/2 px-3 py-2 bg-gray-800 text-white text-sm rounded-lg opacity-0 group-hover:opacity-100 transition-opacity duration-200 whitespace-nowrap z-50 pointer-events-none">
+              {item.label}
+              <div className="mt-1 text-xs text-amber-300">Coming Soon</div>
+              <div className="absolute -left-1 top-1/2 -translate-y-1/2 w-0 h-0 border-y-4 border-r-4 border-l-0 border-transparent border-r-gray-800"></div>
+            </div>
+          )}
+        </div>
+      );
+    }
+    
+    // Active/available page
+    return (
+      <button
+        key={item.id}
+        onClick={() => handleNavigation(item.path, item.id, true, item.label)}
+        className={cn(
+          "w-full flex items-center rounded-lg px-3 py-3 font-medium transition-colors duration-200 relative",
+          collapsed ? "justify-center" : "justify-start space-x-3",
+          isActive ? roleStyles.sidebarActiveBg : roleStyles.sidebarHoverBg,
+          "group"
+        )}
+        title={collapsed ? item.label : undefined}
+      >
+        {isActive && !collapsed && (
+          <div className="absolute left-0 top-0 bottom-0 w-1 bg-white rounded-r"></div>
+        )}
+        
+        <div className="relative">
+          <div className={cn(
+            "p-1.5 rounded-md transition-colors",
+            isActive ? "bg-white/20" : "group-hover:bg-white/10"
+          )}>
+            {item.icon}
+          </div>
+          
+          {item.badge && (
+            <span className={cn(
+              "absolute -top-1 -right-1 h-5 w-5 rounded-full text-xs flex items-center justify-center font-bold",
+              roleStyles.badgeColor
+            )}>
+              {item.badge}
+            </span>
+          )}
+        </div>
+        
+        {!collapsed && (
+          <span className="flex-1 text-left text-sm font-medium">
+            {item.label}
+          </span>
+        )}
+        
+        {/* Tooltip for collapsed sidebar */}
+        {collapsed && !isActive && (
+          <div className="absolute left-full ml-2 top-1/2 -translate-y-1/2 px-3 py-2 bg-gray-800 text-white text-sm rounded-lg opacity-0 group-hover:opacity-100 transition-opacity duration-200 whitespace-nowrap z-50 pointer-events-none">
+            {item.label}
+            <div className="absolute -left-1 top-1/2 -translate-y-1/2 w-0 h-0 border-y-4 border-r-4 border-l-0 border-transparent border-r-gray-800"></div>
+          </div>
+        )}
+      </button>
+    );
+  };
+
   return (
     <>
+      {/* Toast Notification */}
+      {toast && <ComingSoonToast label={toast.label} onClose={() => setToast(null)} />}
+
       {/* Desktop Side Panel */}
       <aside 
         className={cn(
-          "hidden lg:flex fixed inset-y-0 left-0 z-50 flex-col transition-all duration-300",
+          "hidden lg:flex fixed inset-y-0 left-0 z-40 flex-col transition-all duration-300",
           collapsed ? "w-16" : "w-64",
           roleStyles.sidebarBg,
           roleStyles.sidebarText,
@@ -505,52 +685,31 @@ export default function RoleSidePanel() {
         {/* Desktop Navigation */}
         <nav className="flex-1 overflow-y-auto py-4">
           <div className="space-y-1 px-2">
-            {navigationItems.map((item) => {
-              const isActive = activeTab === item.id;
-              return (
-                <button
-                  key={item.id}
-                  onClick={() => handleNavigation(item.path, item.id)}
-                  className={cn(
-                    "w-full flex items-center rounded-lg px-3 py-3 font-medium transition-colors duration-200 relative",
-                    collapsed ? "justify-center" : "justify-start space-x-3",
-                    isActive ? roleStyles.sidebarActiveBg : roleStyles.sidebarHoverBg,
-                    "group",
-                    isActive ? roleStyles.accentBorder + " border-l-4" : ""
-                  )}
-                  title={collapsed ? item.label : undefined}
-                >
-                  {isActive && !collapsed && (
-                    <div className="absolute left-0 top-0 bottom-0 w-1 bg-white rounded-r"></div>
-                  )}
-                  
-                  <div className="relative">
-                    <div className={cn(
-                      "p-1.5 rounded-md transition-colors",
-                      isActive ? "bg-white/20" : "group-hover:bg-white/10"
-                    )}>
-                      {item.icon}
-                    </div>
-                    
-                    {item.badge && (
-                      <span className={cn(
-                        "absolute -top-1 -right-1 h-5 w-5 rounded-full text-xs flex items-center justify-center font-bold",
-                        roleStyles.badgeColor
-                      )}>
-                        {item.badge}
-                      </span>
-                    )}
-                  </div>
-                  
-                  {!collapsed && (
-                    <span className="flex-1 text-left text-sm font-medium">
-                      {item.label}
-                    </span>
-                  )}
-                </button>
-              );
-            })}
+            {navigationItems.map((item) => renderNavItem(item))}
           </div>
+          
+          {/* Development Status */}
+          {!collapsed && (
+            <div className="mt-6 px-3">
+              <div className="text-xs font-medium uppercase tracking-wider opacity-60 mb-2">
+                Development Status
+              </div>
+              <div className="space-y-2">
+                <div className="flex items-center justify-between text-xs bg-white/5 rounded-lg p-2">
+                  <span className="opacity-75">Available Features</span>
+                  <span className="font-bold text-green-400">
+                    {navigationItems.filter(item => item.available).length}
+                  </span>
+                </div>
+                <div className="flex items-center justify-between text-xs bg-white/5 rounded-lg p-2">
+                  <span className="opacity-75">Coming Soon</span>
+                  <span className="font-bold text-amber-400">
+                    {navigationItems.filter(item => !item.available).length}
+                  </span>
+                </div>
+              </div>
+            </div>
+          )}
         </nav>
 
         {/* Footer */}
@@ -599,41 +758,21 @@ export default function RoleSidePanel() {
       {isMobile && (
         <div className="lg:hidden fixed bottom-0 left-0 right-0 z-40 bg-white border-t border-gray-200 shadow-lg">
           <div className="flex items-center justify-around px-2 py-2">
-            {mobileNavItems.map((item) => {
-              const isActive = activeTab === item.id;
-              return (
-                <button
-                  key={item.id}
-                  onClick={() => handleNavigation(item.path, item.id)}
-                  className={cn(
-                    "flex flex-col items-center justify-center p-2 rounded-lg transition-colors",
-                    isActive ? "text-blue-600" : "text-gray-600"
-                  )}
-                >
-                  <div className={cn(
-                    "p-2 rounded-full transition-colors",
-                    isActive ? "bg-blue-50" : "hover:bg-gray-100"
-                  )}>
-                    {item.icon}
-                  </div>
-                  <span className="text-xs mt-1 font-medium">{item.label}</span>
-                </button>
-              );
-            })}
+            {mobileNavItems.map((item) => renderNavItem(item, true))}
             
             {/* Mobile Menu Button */}
-            <div ref={dropdownRef} className="relative">
+            <div ref={dropdownRef} className="relative flex-1">
               <button
                 onClick={() => setMobileOpen(!mobileOpen)}
                 className={cn(
-                  "flex flex-col items-center justify-center p-2 rounded-lg transition-colors",
-                  mobileOpen ? "text-blue-600" : "text-gray-600"
+                  "flex flex-col items-center justify-center p-2 rounded-lg transition-colors w-full",
+                  mobileOpen ? "text-blue-600" : "text-gray-600 hover:text-gray-900"
                 )}
                 aria-label="More menu options"
               >
                 <div className={cn(
                   "p-2 rounded-full transition-colors",
-                  mobileOpen ? "bg-blue-50" : "hover:bg-gray-100"
+                  mobileOpen ? "bg-blue-50" : "bg-gray-50 hover:bg-gray-100"
                 )}>
                   {mobileOpen ? (
                     <X className="h-5 w-5" />
@@ -653,21 +792,34 @@ export default function RoleSidePanel() {
                   </div>
                   
                   <div className="py-2">
-                    {mobileDropdownItems.map((item) => {
+                    {navigationItems.map((item) => {
                       const isActive = activeTab === item.id;
+                      const isPending = !item.available;
+                      
                       return (
                         <button
                           key={item.id}
-                          onClick={() => handleNavigation(item.path, item.id)}
+                          onClick={() => isPending ? showComingSoonToast(item.label) : handleNavigation(item.path, item.id, item.available, item.label)}
                           className={cn(
                             "w-full flex items-center px-4 py-3 text-left transition-colors",
-                            isActive ? "bg-blue-50 text-blue-600" : "text-gray-700 hover:bg-gray-50"
+                            isActive ? "bg-blue-50 text-blue-600" : "text-gray-700 hover:bg-gray-50",
+                            isPending ? "opacity-50 cursor-not-allowed" : ""
                           )}
                         >
-                          <div className="mr-3">
+                          <div className="mr-3 relative">
                             {item.icon}
+                            {isPending && (
+                              <div className="absolute -top-1 -right-1 h-4 w-4 rounded-full bg-amber-500 flex items-center justify-center">
+                                <Lock className="h-2.5 w-2.5 text-white" />
+                              </div>
+                            )}
                           </div>
                           <span className="flex-1 text-sm font-medium">{item.label}</span>
+                          {isPending && (
+                            <span className="text-xs bg-amber-100 text-amber-800 px-2 py-1 rounded">
+                              Soon
+                            </span>
+                          )}
                           {item.badge && (
                             <span className="ml-2 h-5 w-5 rounded-full bg-red-500 text-xs flex items-center justify-center text-white font-bold">
                               {item.badge}
@@ -700,6 +852,17 @@ export default function RoleSidePanel() {
         collapsed ? "w-16" : "w-64",
         "transition-all duration-300"
       )} />
+
+      {/* Add custom CSS for progress animation */}
+      <style jsx global>{`
+        @keyframes progress {
+          from { width: 0%; }
+          to { width: 100%; }
+        }
+        .animate-progress {
+          animation: progress 4s linear forwards;
+        }
+      `}</style>
     </>
   );
 }

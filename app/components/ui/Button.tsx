@@ -69,6 +69,7 @@ const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
       iconRight,
       loadingText,
       shape = 'default',
+      asChild = false,
       type = 'button',
       ...props
     },
@@ -105,18 +106,18 @@ const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
       
       // Outline variant
       variant === 'outline' && 
-        'border border-gray-300 bg-transparent text-gray-700 hover:bg-gray-50 focus-visible:ring-gray-500 dark:border-gray-600 dark:text-gray-300 dark:hover:bg-gray-800',
+        'border border-gray-300 bg-transparent text-gray-700 hover:bg-gray-50 focus-visible:ring-gray-500',
       
       // Secondary variant
-      variant === 'secondary' && 'bg-gray-200 text-gray-900 hover:bg-gray-300 focus-visible:ring-gray-400 dark:bg-gray-700 dark:text-gray-100 dark:hover:bg-gray-600',
+      variant === 'secondary' && 'bg-gray-200 text-gray-900 hover:bg-gray-300 focus-visible:ring-gray-400',
       
       // Ghost variant
       variant === 'ghost' && 
-        'text-gray-700 hover:bg-gray-100 hover:text-gray-900 focus-visible:ring-gray-400 dark:text-gray-300 dark:hover:bg-gray-800 dark:hover:text-gray-100',
+        'text-gray-700 hover:bg-gray-100 hover:text-gray-900 focus-visible:ring-gray-400',
       
       // Link variant
       variant === 'link' && 
-        'text-blue-600 underline-offset-4 hover:underline focus-visible:ring-blue-500 dark:text-blue-400 h-auto p-0'
+        'text-blue-600 underline-offset-4 hover:underline focus-visible:ring-blue-500 h-auto p-0'
     );
     
     // Icon size classes
@@ -127,19 +128,33 @@ const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
       size === 'xl' && 'h-6 w-6'
     );
 
+    // Compose all classes
+    const composedClassName = cn(
+      baseClasses,
+      sizeClasses,
+      variantClasses,
+      variant !== 'link' && 'shadow-sm hover:shadow-md',
+      loading && 'cursor-wait',
+      className
+    );
+
+    // If asChild is true, clone the child element with button props
+    if (asChild && React.isValidElement(children)) {
+      const child = children as React.ReactElement<any>;
+      return React.cloneElement(child, {
+        className: cn(child.props.className, composedClassName),
+        disabled: child.props.disabled !== undefined ? child.props.disabled : isDisabled,
+        ...props,
+        ref: child.props.ref || ref,
+      });
+    }
+
     return (
       <button
         ref={ref}
         type={type}
         disabled={isDisabled}
-        className={cn(
-          baseClasses,
-          sizeClasses,
-          variantClasses,
-          variant !== 'link' && 'shadow-sm hover:shadow-md',
-          loading && 'cursor-wait',
-          className
-        )}
+        className={composedClassName}
         {...props}
       >
         {/* Loading state */}
