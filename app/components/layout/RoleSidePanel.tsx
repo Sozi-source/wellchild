@@ -1,21 +1,18 @@
-// app/components/layout/RoleSidePanel.tsx - UPDATED WITH PLAIN PROFESSIONAL COLORS
+// app/components/layout/RoleSidePanel.tsx - FIXED VERSION
 "use client";
 
-import { useState } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useAuth } from '@/app/context/AuthContext';
 import { useRouter, usePathname } from 'next/navigation';
 import { cn } from '@/app/lib/utils';
 import {
   Home,
   Users,
-  UserPlus,
   FileText,
   Calendar,
   BarChart3,
-  Settings,
   Shield,
   Bell,
-  HelpCircle,
   LogOut,
   ChevronLeft,
   ChevronRight,
@@ -28,16 +25,15 @@ import {
   TrendingUp,
   Menu,
   Syringe,
-  UserCircle,
   Database,
   AlertCircle,
-  Zap,
-  Compass,
-  Layers,
-  Target,
-  Clock,
-  Award,
-  User
+  Building,
+  Settings as SettingsIcon,
+  User,
+  Search,
+  MessageSquare,
+  X,
+  ChevronDown
 } from 'lucide-react';
 
 export default function RoleSidePanel() {
@@ -46,257 +42,382 @@ export default function RoleSidePanel() {
   const pathname = usePathname();
   const [collapsed, setCollapsed] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
+  const [isMobile, setIsMobile] = useState(false);
+  const [activeTab, setActiveTab] = useState('dashboard');
+  const [mounted, setMounted] = useState(false);
+  const dropdownRef = useRef<HTMLDivElement>(null);
 
-  if (!userProfile) return null;
-
-  // Professional, plain color schemes for each role
-  const getRoleStyles = () => {
-    switch (userProfile.role) {
-      case 'admin':
-        return {
-          // Cool slate blue - Professional & Commanding
-          bgColor: 'bg-slate-50',
-          sidebarBg: 'bg-slate-800',
-          textColor: 'text-slate-800',
-          sidebarText: 'text-slate-100',
-          borderColor: 'border-slate-300',
-          sidebarBorder: 'border-slate-700',
-          hoverBg: 'hover:bg-slate-100',
-          sidebarHoverBg: 'hover:bg-slate-700',
-          activeBg: 'bg-slate-200',
-          sidebarActiveBg: 'bg-slate-600',
-          accentColor: 'text-blue-600',
-          sidebarAccentColor: 'text-blue-300',
-          iconBg: 'bg-blue-100',
-          sidebarIconBg: 'bg-blue-800',
-          badgeColor: 'bg-blue-500',
-          buttonColor: 'bg-blue-600 hover:bg-blue-700',
-          logoColor: 'text-blue-600'
-        };
-      case 'clinician':
-        return {
-          // Clean teal - Medical & Trustworthy
-          bgColor: 'bg-teal-50',
-          sidebarBg: 'bg-teal-800',
-          textColor: 'text-teal-900',
-          sidebarText: 'text-teal-50',
-          borderColor: 'border-teal-300',
-          sidebarBorder: 'border-teal-700',
-          hoverBg: 'hover:bg-teal-100',
-          sidebarHoverBg: 'hover:bg-teal-700',
-          activeBg: 'bg-teal-200',
-          sidebarActiveBg: 'bg-teal-600',
-          accentColor: 'text-teal-600',
-          sidebarAccentColor: 'text-teal-300',
-          iconBg: 'bg-teal-100',
-          sidebarIconBg: 'bg-teal-800',
-          badgeColor: 'bg-teal-500',
-          buttonColor: 'bg-teal-600 hover:bg-teal-700',
-          logoColor: 'text-teal-600'
-        };
-      case 'guardian':
-        return {
-          // Crystal clear sky blue - Caring & Protective
-          bgColor: 'bg-sky-50',
-          sidebarBg: 'bg-sky-800',
-          textColor: 'text-sky-900',
-          sidebarText: 'text-sky-50',
-          borderColor: 'border-sky-300',
-          sidebarBorder: 'border-sky-700',
-          hoverBg: 'hover:bg-sky-100',
-          sidebarHoverBg: 'hover:bg-sky-700',
-          activeBg: 'bg-sky-200',
-          sidebarActiveBg: 'bg-sky-600',
-          accentColor: 'text-sky-600',
-          sidebarAccentColor: 'text-sky-300',
-          iconBg: 'bg-sky-100',
-          sidebarIconBg: 'bg-sky-800',
-          badgeColor: 'bg-sky-500',
-          buttonColor: 'bg-sky-600 hover:bg-sky-700',
-          logoColor: 'text-sky-600'
-        };
-      default:
-        return {
-          // Neutral professional scheme
-          bgColor: 'bg-gray-50',
-          sidebarBg: 'bg-gray-800',
-          textColor: 'text-gray-900',
-          sidebarText: 'text-gray-100',
-          borderColor: 'border-gray-300',
-          sidebarBorder: 'border-gray-700',
-          hoverBg: 'hover:bg-gray-100',
-          sidebarHoverBg: 'hover:bg-gray-700',
-          activeBg: 'bg-gray-200',
-          sidebarActiveBg: 'bg-gray-600',
-          accentColor: 'text-gray-600',
-          sidebarAccentColor: 'text-gray-300',
-          iconBg: 'bg-gray-100',
-          sidebarIconBg: 'bg-gray-800',
-          badgeColor: 'bg-gray-500',
-          buttonColor: 'bg-gray-600 hover:bg-gray-700',
-          logoColor: 'text-gray-600'
-        };
-    }
-  };
-
-  const roleStyles = getRoleStyles();
-
-  // Role-based navigation items
+  // Move function declarations BEFORE useEffect that uses them
+  // Get navigation items function
   const getNavigationItems = () => {
-    const baseItems = [
+    if (!userProfile) return [];
+    
+    const roleBasePath = `/dashboard/${userProfile.role}`;
+    
+    const commonItems = [
       {
         id: 'dashboard',
         label: 'Dashboard',
-        icon: <Compass className="h-5 w-5" />,
-        path: '/dashboard',
-        roles: ['guardian', 'clinician', 'admin']
-      },
-      {
-        id: 'notifications',
-        label: 'Notifications',
-        icon: <Bell className="h-5 w-5" />,
-        path: '/dashboard/notifications',
-        badge: 3,
-        roles: ['guardian', 'clinician', 'admin']
+        icon: <Home className="h-5 w-5" />,
+        path: roleBasePath,
       },
       {
         id: 'activity',
         label: 'Activity',
         icon: <Activity className="h-5 w-5" />,
-        path: '/dashboard/activity',
-        roles: ['guardian', 'clinician', 'admin']
+        path: `${roleBasePath}/activity`,
+      },
+      {
+        id: 'notifications',
+        label: 'Notifications',
+        icon: <Bell className="h-5 w-5" />,
+        path: `${roleBasePath}/notifications`,
+        badge: 3
       }
     ];
 
-    // Guardian-specific items
-    if (userProfile.role === 'guardian') {
-      return [
-        ...baseItems,
-        {
-          id: 'children',
-          label: 'My Children',
-          icon: <Baby className="h-5 w-5" />,
-          path: '/dashboard/guardian/children',
-          roles: ['guardian']
-        },
-        {
-          id: 'appointments',
-          label: 'Appointments',
-          icon: <Calendar className="h-5 w-5" />,
-          path: '/dashboard/guardian/appointments',
-          roles: ['guardian']
-        },
-        {
-          id: 'growth',
-          label: 'Growth Charts',
-          icon: <TrendingUp className="h-5 w-5" />,
-          path: '/dashboard/guardian/growth',
-          roles: ['guardian']
-        },
-        {
-          id: 'vaccinations',
-          label: 'Vaccinations',
-          icon: <Syringe className="h-5 w-5" />,
-          path: '/dashboard/guardian/vaccinations',
-          roles: ['guardian']
-        },
-        {
-          id: 'health-records',
-          label: 'Health Records',
-          icon: <FileText className="h-5 w-5" />,
-          path: '/dashboard/guardian/records',
-          roles: ['guardian']
-        }
-      ];
+    switch (userProfile.role) {
+      case 'guardian':
+        return [
+          ...commonItems,
+          {
+            id: 'children',
+            label: 'My Children',
+            icon: <Baby className="h-5 w-5" />,
+            path: '/dashboard/guardian/children',
+          },
+          {
+            id: 'appointments',
+            label: 'Appointments',
+            icon: <Calendar className="h-5 w-5" />,
+            path: '/dashboard/guardian/appointments',
+          },
+          {
+            id: 'growth',
+            label: 'Growth Charts',
+            icon: <TrendingUp className="h-5 w-5" />,
+            path: '/dashboard/guardian/growth',
+          },
+          {
+            id: 'vaccinations',
+            label: 'Vaccinations',
+            icon: <Syringe className="h-5 w-5" />,
+            path: '/dashboard/guardian/vaccinations',
+          },
+          {
+            id: 'records',
+            label: 'Health Records',
+            icon: <FileText className="h-5 w-5" />,
+            path: '/dashboard/guardian/records',
+          },
+          {
+            id: 'messages',
+            label: 'Messages',
+            icon: <MessageSquare className="h-5 w-5" />,
+            path: '/dashboard/guardian/messages',
+          }
+        ];
+      case 'clinician':
+        return [
+          ...commonItems,
+          {
+            id: 'patients',
+            label: 'My Patients',
+            icon: <Users className="h-5 w-5" />,
+            path: '/dashboard/clinician/patients',
+          },
+          {
+            id: 'appointments',
+            label: 'Appointments',
+            icon: <Calendar className="h-5 w-5" />,
+            path: '/dashboard/clinician/appointments',
+          },
+          {
+            id: 'records',
+            label: 'Medical Records',
+            icon: <ClipboardList className="h-5 w-5" />,
+            path: '/dashboard/clinician/records',
+          },
+          {
+            id: 'prescriptions',
+            label: 'Prescriptions',
+            icon: <Pill className="h-5 w-5" />,
+            path: '/dashboard/clinician/prescriptions',
+          },
+          {
+            id: 'analytics',
+            label: 'Analytics',
+            icon: <BarChart3 className="h-5 w-5" />,
+            path: '/dashboard/clinician/analytics',
+          },
+          {
+            id: 'messages',
+            label: 'Messages',
+            icon: <MessageSquare className="h-5 w-5" />,
+            path: '/dashboard/clinician/messages',
+          }
+        ];
+      case 'admin':
+        return [
+          ...commonItems,
+          {
+            id: 'users',
+            label: 'User Management',
+            icon: <Users className="h-5 w-5" />,
+            path: '/dashboard/admin/users',
+          },
+          {
+            id: 'clinics',
+            label: 'Clinic Management',
+            icon: <Building className="h-5 w-5" />,
+            path: '/dashboard/admin/clinics',
+          },
+          {
+            id: 'reports',
+            label: 'Reports & Analytics',
+            icon: <Database className="h-5 w-5" />,
+            path: '/dashboard/admin/reports',
+          },
+          {
+            id: 'audit',
+            label: 'Audit Logs',
+            icon: <AlertCircle className="h-5 w-5" />,
+            path: '/dashboard/admin/audit',
+          },
+          {
+            id: 'settings',
+            label: 'System Settings',
+            icon: <SettingsIcon className="h-5 w-5" />,
+            path: '/dashboard/admin/settings',
+          }
+        ];
+      default:
+        return commonItems;
+    }
+  };
+
+  // Mobile bottom navigation items
+  const getMobileNavItems = () => {
+    if (!userProfile) return [];
+    
+    const items = [
+      {
+        id: 'dashboard',
+        label: 'Home',
+        icon: <Home className="h-5 w-5" />,
+        path: `/dashboard/${userProfile.role}`,
+      },
+      {
+        id: 'search',
+        label: 'Search',
+        icon: <Search className="h-5 w-5" />,
+        path: `/dashboard/${userProfile.role}/search`,
+      },
+    ];
+
+    switch (userProfile.role) {
+      case 'guardian':
+        return [
+          ...items,
+          {
+            id: 'children',
+            label: 'Children',
+            icon: <Baby className="h-5 w-5" />,
+            path: '/dashboard/guardian/children',
+          },
+          {
+            id: 'appointments',
+            label: 'Appointments',
+            icon: <Calendar className="h-5 w-5" />,
+            path: '/dashboard/guardian/appointments',
+          },
+          {
+            id: 'messages',
+            label: 'Messages',
+            icon: <MessageSquare className="h-5 w-5" />,
+            path: '/dashboard/guardian/messages',
+          },
+        ];
+      case 'clinician':
+        return [
+          ...items,
+          {
+            id: 'patients',
+            label: 'Patients',
+            icon: <Users className="h-5 w-5" />,
+            path: '/dashboard/clinician/patients',
+          },
+          {
+            id: 'appointments',
+            label: 'Appointments',
+            icon: <Calendar className="h-5 w-5" />,
+            path: '/dashboard/clinician/appointments',
+          },
+          {
+            id: 'messages',
+            label: 'Messages',
+            icon: <MessageSquare className="h-5 w-5" />,
+            path: '/dashboard/clinician/messages',
+          },
+        ];
+      case 'admin':
+        return [
+          ...items,
+          {
+            id: 'users',
+            label: 'Users',
+            icon: <Users className="h-5 w-5" />,
+            path: '/dashboard/admin/users',
+          },
+          {
+            id: 'settings',
+            label: 'Settings',
+            icon: <SettingsIcon className="h-5 w-5" />,
+            path: '/dashboard/admin/settings',
+          },
+        ];
+      default:
+        return items;
+    }
+  };
+
+  // Role styles
+  const getRoleStyles = () => {
+    if (!userProfile) {
+      return {
+        sidebarBg: 'bg-gray-900',
+        sidebarText: 'text-gray-100',
+        sidebarBorder: 'border-gray-800',
+        sidebarHoverBg: 'hover:bg-gray-800',
+        sidebarActiveBg: 'bg-gray-700',
+        sidebarIconBg: 'bg-gray-800',
+        badgeColor: 'bg-gray-500',
+        iconColor: 'text-white',
+        accentBorder: 'border-gray-500'
+      };
     }
 
-    // Clinician-specific items
-    if (userProfile.role === 'clinician') {
-      return [
-        ...baseItems,
-        {
-          id: 'patients',
-          label: 'My Patients',
-          icon: <Users className="h-5 w-5" />,
-          path: '/dashboard/clinicians/children',
-          roles: ['clinician']
-        },
-        {
-          id: 'appointments',
-          label: 'Appointments',
-          icon: <Calendar className="h-5 w-5" />,
-          path: '/dashboard/clinicians/appointments',
-          roles: ['clinician']
-        },
-        {
-          id: 'medical-records',
-          label: 'Medical Records',
-          icon: <ClipboardList className="h-5 w-5" />,
-          path: '/dashboard/clinicians/medical-records',
-          roles: ['clinician']
-        },
-        {
-          id: 'prescriptions',
-          label: 'Prescriptions',
-          icon: <Pill className="h-5 w-5" />,
-          path: '/dashboard/clinicians/prescriptions',
-          roles: ['clinician']
-        },
-        {
-          id: 'analytics',
-          label: 'Analytics',
-          icon: <BarChart3 className="h-5 w-5" />,
-          path: '/dashboard/clinicians/analytics',
-          roles: ['clinician']
-        }
-      ];
+    switch (userProfile.role) {
+      case 'admin':
+        return {
+          sidebarBg: 'bg-slate-900',
+          sidebarText: 'text-slate-100',
+          sidebarBorder: 'border-slate-800',
+          sidebarHoverBg: 'hover:bg-slate-800',
+          sidebarActiveBg: 'bg-slate-700',
+          sidebarIconBg: 'bg-blue-800',
+          badgeColor: 'bg-blue-500',
+          iconColor: 'text-white',
+          accentBorder: 'border-blue-500'
+        };
+      case 'clinician':
+        return {
+          sidebarBg: 'bg-teal-900',
+          sidebarText: 'text-teal-50',
+          sidebarBorder: 'border-teal-800',
+          sidebarHoverBg: 'hover:bg-teal-800',
+          sidebarActiveBg: 'bg-teal-700',
+          sidebarIconBg: 'bg-teal-800',
+          badgeColor: 'bg-teal-500',
+          iconColor: 'text-white',
+          accentBorder: 'border-teal-500'
+        };
+      case 'guardian':
+        return {
+          sidebarBg: 'bg-sky-900',
+          sidebarText: 'text-sky-50',
+          sidebarBorder: 'border-sky-800',
+          sidebarHoverBg: 'hover:bg-sky-800',
+          sidebarActiveBg: 'bg-sky-700',
+          sidebarIconBg: 'bg-sky-800',
+          badgeColor: 'bg-sky-500',
+          iconColor: 'text-white',
+          accentBorder: 'border-sky-500'
+        };
+      default:
+        return {
+          sidebarBg: 'bg-gray-900',
+          sidebarText: 'text-gray-100',
+          sidebarBorder: 'border-gray-800',
+          sidebarHoverBg: 'hover:bg-gray-800',
+          sidebarActiveBg: 'bg-gray-700',
+          sidebarIconBg: 'bg-gray-800',
+          badgeColor: 'bg-gray-500',
+          iconColor: 'text-white',
+          accentBorder: 'border-gray-500'
+        };
     }
+  };
 
-    // Admin-specific items
-    if (userProfile.role === 'admin') {
-      return [
-        ...baseItems,
-        {
-          id: 'users',
-          label: 'Users',
-          icon: <Users className="h-5 w-5" />,
-          path: '/dashboard/admin/users',
-          roles: ['admin']
-        },
-        {
-          id: 'system',
-          label: 'System Settings',
-          icon: <Settings className="h-5 w-5" />,
-          path: '/dashboard/admin/users/system',
-          roles: ['admin']
-        },
-        {
-          id: 'audit',
-          label: 'Audit Logs',
-          icon: <Shield className="h-5 w-5" />,
-          path: '/dashboard/admin/users/audit',
-          roles: ['admin']
-        },
-        {
-          id: 'reports',
-          label: 'Reports',
-          icon: <Database className="h-5 w-5" />,
-          path: '/dashboard/admin/users/reports',
-          roles: ['admin']
-        }
-      ];
+  // Get role icon
+  const getRoleIcon = () => {
+    if (!userProfile) return <User className="h-6 w-6" />;
+    
+    switch (userProfile.role) {
+      case 'admin': return <Shield className="h-6 w-6" />;
+      case 'clinician': return <Stethoscope className="h-6 w-6" />;
+      case 'guardian': return <Heart className="h-6 w-6" />;
+      default: return <User className="h-6 w-6" />;
     }
-
-    return baseItems;
   };
 
   const navigationItems = getNavigationItems();
-  const activeItem = navigationItems.find(item => pathname.startsWith(item.path))?.id;
+  const mobileNavItems = getMobileNavItems();
+  const mobileDropdownItems = getNavigationItems(); // Same as navigationItems
+  const roleStyles = getRoleStyles();
+
+  // Set mounted state after component mounts (client-side only)
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
+  // Detect mobile - only on client side
+  useEffect(() => {
+    if (!mounted) return;
+    
+    const checkMobile = () => {
+      const mobile = window.innerWidth < 1024;
+      setIsMobile(mobile);
+      if (mobile) {
+        setCollapsed(true);
+      }
+    };
+    
+    checkMobile();
+    window.addEventListener('resize', checkMobile);
+    return () => window.removeEventListener('resize', checkMobile);
+  }, [mounted]);
+
+  // Close dropdown when clicking outside
+  useEffect(() => {
+    if (!mounted) return;
+    
+    const handleClickOutside = (event: MouseEvent) => {
+      if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
+        setMobileOpen(false);
+      }
+    };
+
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, [mounted]);
+
+  // Update active tab based on pathname
+  useEffect(() => {
+    if (!mounted) return;
+    
+    const currentItem = navigationItems.find(item => 
+      pathname === item.path || pathname.startsWith(item.path + '/')
+    );
+    if (currentItem) {
+      setActiveTab(currentItem.id);
+    }
+  }, [pathname, navigationItems, mounted]);
 
   const handleLogout = async () => {
     try {
       await logout();
-      window.location.href = '/';
+      window.location.href = '/login';
     } catch (error) {
       console.error('Logout failed:', error);
       window.location.href = '/';
@@ -307,28 +428,30 @@ export default function RoleSidePanel() {
     setCollapsed(!collapsed);
   };
 
+  const handleNavigation = (path: string, tabId: string) => {
+    setActiveTab(tabId);
+    router.push(path);
+    if (isMobile) {
+      setMobileOpen(false);
+    }
+  };
+
+  // Don't render anything during SSR or if no user profile
+  if (!mounted || !userProfile) return null;
+
   return (
     <>
-      {/* Mobile overlay */}
-      {mobileOpen && (
-        <div 
-          className="lg:hidden fixed inset-0 bg-black bg-opacity-50 backdrop-blur-sm z-40 transition-opacity duration-300"
-          onClick={() => setMobileOpen(false)}
-        />
-      )}
-
-      {/* Side Panel */}
+      {/* Desktop Side Panel */}
       <aside 
         className={cn(
-          "fixed inset-y-0 left-0 z-50 flex flex-col transition-all duration-300 transform",
-          collapsed ? "w-20" : "w-64",
-          mobileOpen ? "translate-x-0" : "-translate-x-full lg:translate-x-0",
+          "hidden lg:flex fixed inset-y-0 left-0 z-50 flex-col transition-all duration-300",
+          collapsed ? "w-16" : "w-64",
           roleStyles.sidebarBg,
           roleStyles.sidebarText,
-          "shadow-lg"
+          "shadow-xl"
         )}
       >
-        {/* Header with Logo */}
+        {/* Header */}
         <div className={cn(
           "flex items-center justify-between p-4 border-b",
           roleStyles.sidebarBorder
@@ -336,97 +459,93 @@ export default function RoleSidePanel() {
           {!collapsed && (
             <div className="flex items-center space-x-3">
               <div className={cn(
-                "h-9 w-9 rounded-lg flex items-center justify-center",
-                roleStyles.sidebarIconBg
+                "h-10 w-10 rounded-lg flex items-center justify-center",
+                roleStyles.sidebarIconBg,
+                roleStyles.iconColor
               )}>
-                {userProfile.role === 'admin' && (
-                  <Shield className="h-5 w-5 text-white" />
-                )}
-                {userProfile.role === 'clinician' && (
-                  <Stethoscope className="h-5 w-5 text-white" />
-                )}
-                {userProfile.role === 'guardian' && (
-                  <Heart className="h-5 w-5 text-white" />
-                )}
+                {getRoleIcon()}
               </div>
               <div className="flex-1 min-w-0">
-                <div className="flex items-center space-x-2">
-                  <p className="font-semibold truncate text-sm">{userProfile.name}</p>
-                  <span className={cn(
-                    "text-xs px-2 py-0.5 rounded font-medium",
-                    "bg-white/20"
-                  )}>
-                    {userProfile.role.toUpperCase()}
-                  </span>
-                </div>
-                <p className="text-xs opacity-90 truncate">{userProfile.email}</p>
+                <p className="font-semibold truncate text-sm">{userProfile.name || 'User'}</p>
+                <p className="text-xs opacity-90 truncate capitalize">{userProfile.role || 'user'}</p>
               </div>
             </div>
           )}
           
+          {collapsed && (
+            <div className={cn(
+              "h-10 w-10 rounded-lg flex items-center justify-center mx-auto",
+              roleStyles.sidebarIconBg,
+              roleStyles.iconColor
+            )}>
+              {getRoleIcon()}
+            </div>
+          )}
+          
           {/* Toggle Button */}
-          <button
-            onClick={toggleSidebar}
-            className={cn(
-              "p-2 rounded-lg transition-colors",
-              roleStyles.sidebarHoverBg
-            )}
-          >
-            {collapsed ? (
-              <ChevronRight className="h-4 w-4" />
-            ) : (
-              <ChevronLeft className="h-4 w-4" />
-            )}
-          </button>
+          {!isMobile && (
+            <button
+              onClick={toggleSidebar}
+              className={cn(
+                "p-2 rounded-lg transition-colors",
+                roleStyles.sidebarHoverBg,
+                collapsed ? "mx-auto" : ""
+              )}
+              aria-label={collapsed ? "Expand sidebar" : "Collapse sidebar"}
+            >
+              {collapsed ? (
+                <ChevronRight className="h-4 w-4" />
+              ) : (
+                <ChevronLeft className="h-4 w-4" />
+              )}
+            </button>
+          )}
         </div>
 
-        {/* Navigation Items */}
-        <nav className="flex-1 overflow-y-auto py-4 px-2">
-          <div className="space-y-1">
+        {/* Desktop Navigation */}
+        <nav className="flex-1 overflow-y-auto py-4">
+          <div className="space-y-1 px-2">
             {navigationItems.map((item) => {
-              const isActive = activeItem === item.id;
+              const isActive = activeTab === item.id;
               return (
                 <button
                   key={item.id}
-                  onClick={() => {
-                    router.push(item.path);
-                    setMobileOpen(false);
-                  }}
+                  onClick={() => handleNavigation(item.path, item.id)}
                   className={cn(
-                    "w-full flex items-center rounded-lg px-3 py-2.5 font-medium transition-colors duration-200",
+                    "w-full flex items-center rounded-lg px-3 py-3 font-medium transition-colors duration-200 relative",
                     collapsed ? "justify-center" : "justify-start space-x-3",
-                    isActive ? roleStyles.sidebarActiveBg : roleStyles.sidebarHoverBg
+                    isActive ? roleStyles.sidebarActiveBg : roleStyles.sidebarHoverBg,
+                    "group",
+                    isActive ? roleStyles.accentBorder + " border-l-4" : ""
                   )}
+                  title={collapsed ? item.label : undefined}
                 >
+                  {isActive && !collapsed && (
+                    <div className="absolute left-0 top-0 bottom-0 w-1 bg-white rounded-r"></div>
+                  )}
+                  
                   <div className="relative">
                     <div className={cn(
-                      "p-1.5 rounded-md",
-                      isActive ? "bg-white/20" : ""
+                      "p-1.5 rounded-md transition-colors",
+                      isActive ? "bg-white/20" : "group-hover:bg-white/10"
                     )}>
                       {item.icon}
                     </div>
-                    {item.badge && !collapsed && (
+                    
+                    {item.badge && (
                       <span className={cn(
-                        "absolute -top-1 -right-1 h-2 w-2 rounded-full",
+                        "absolute -top-1 -right-1 h-5 w-5 rounded-full text-xs flex items-center justify-center font-bold",
                         roleStyles.badgeColor
-                      )} />
+                      )}>
+                        {item.badge}
+                      </span>
                     )}
                   </div>
                   
                   {!collapsed && (
-                    <>
-                      <span className="flex-1 text-left text-sm font-medium">
-                        {item.label}
-                      </span>
-                      {item.badge && (
-                        <span className={cn(
-                          "text-xs px-2 py-0.5 rounded font-semibold",
-                          roleStyles.badgeColor
-                        )}>
-                          {item.badge}
-                        </span>
-                      )}
-                    </>
+                    <span className="flex-1 text-left text-sm font-medium">
+                      {item.label}
+                    </span>
                   )}
                 </button>
               );
@@ -436,98 +555,150 @@ export default function RoleSidePanel() {
 
         {/* Footer */}
         <div className="border-t border-white/10 p-4 space-y-3">
-          {/* Quick Actions */}
-          {!collapsed && (
-            <div className="mb-3">
-              <p className="text-xs font-medium uppercase tracking-wider opacity-60 mb-2">
-                Quick Actions
-              </p>
-              <div className="grid grid-cols-2 gap-2">
-                <button
-                  onClick={() => router.push('/dashboard/settings')}
-                  className="p-2 rounded-lg bg-white/5 hover:bg-white/10 transition-colors text-xs font-medium"
-                >
-                  <Settings className="h-3 w-3 mx-auto mb-1" />
-                  Settings
-                </button>
-                <button
-                  onClick={() => router.push('/dashboard/help')}
-                  className="p-2 rounded-lg bg-white/5 hover:bg-white/10 transition-colors text-xs font-medium"
-                >
-                  <HelpCircle className="h-3 w-3 mx-auto mb-1" />
-                  Help
-                </button>
-              </div>
-            </div>
-          )}
-
-          {/* User Status */}
-          <div className="flex items-center space-x-3 p-3 rounded-lg bg-white/5">
+          {/* User Info */}
+          <div className={cn(
+            "flex items-center p-2 rounded-lg",
+            collapsed ? "justify-center" : "justify-start space-x-3",
+            "bg-white/5"
+          )}>
             <div className="relative">
               <div className={cn(
                 "h-9 w-9 rounded-full flex items-center justify-center text-white font-bold",
                 roleStyles.sidebarIconBg
               )}>
-                {userProfile.name?.charAt(0) || 'U'}
+                {userProfile.name?.charAt(0)?.toUpperCase() || 'U'}
               </div>
-              <div className={cn(
-                "absolute -bottom-0.5 -right-0.5 h-2.5 w-2.5 rounded-full border-2",
-                roleStyles.sidebarBg,
-                userProfile.isActive ? "bg-green-500" : "bg-gray-500"
-              )} />
+              <div className="absolute -bottom-0.5 -right-0.5 h-3 w-3 rounded-full border-2 border-slate-900 bg-green-500"></div>
             </div>
             
             {!collapsed && (
               <div className="flex-1 min-w-0">
-                <p className="font-medium text-sm truncate">{userProfile.name}</p>
-                <div className="flex items-center space-x-1">
-                  <div className={cn(
-                    "h-1.5 w-1.5 rounded-full",
-                    userProfile.isActive ? "bg-green-500" : "bg-gray-500"
-                  )} />
-                  <p className="text-xs opacity-75">
-                    {userProfile.isActive ? 'Active' : 'Inactive'}
-                  </p>
-                </div>
+                <p className="font-medium text-sm truncate">{userProfile.name || 'User'}</p>
+                <p className="text-xs opacity-75 truncate">{userProfile.email}</p>
               </div>
             )}
-
-            {/* Logout Button */}
-            <button
-              onClick={handleLogout}
-              className={cn(
-                "p-2 rounded-lg transition-colors",
-                collapsed ? "ml-auto" : "",
-                "bg-red-600 hover:bg-red-700"
-              )}
-            >
-              <LogOut className="h-4 w-4" />
-            </button>
           </div>
 
-          {/* Copyright */}
-          {!collapsed && (
-            <div className="pt-3 border-t border-white/10">
-              <p className="text-xs text-center opacity-50">
-                © {new Date().getFullYear()} HealthCare Pro
-              </p>
-            </div>
-          )}
+          {/* Logout Button */}
+          <button
+            onClick={handleLogout}
+            className={cn(
+              "w-full flex items-center rounded-lg px-3 py-2.5 font-medium transition-colors",
+              collapsed ? "justify-center" : "justify-start space-x-3",
+              "bg-red-600 hover:bg-red-700 shadow-md hover:shadow-lg"
+            )}
+            title={collapsed ? "Logout" : undefined}
+          >
+            <LogOut className="h-5 w-5" />
+            {!collapsed && <span className="flex-1 text-left text-sm">Logout</span>}
+          </button>
         </div>
       </aside>
 
-      {/* Mobile Menu Button */}
-      <button
-        onClick={() => setMobileOpen(true)}
-        className="lg:hidden fixed top-4 left-4 z-40 p-3 rounded-lg bg-white shadow-lg hover:shadow-xl transition-shadow duration-300 group"
-      >
-        <Menu className="h-6 w-6 text-gray-700 group-hover:text-gray-900" />
-      </button>
+      {/* Mobile Bottom Navigation Bar */}
+      {isMobile && (
+        <div className="lg:hidden fixed bottom-0 left-0 right-0 z-40 bg-white border-t border-gray-200 shadow-lg">
+          <div className="flex items-center justify-around px-2 py-2">
+            {mobileNavItems.map((item) => {
+              const isActive = activeTab === item.id;
+              return (
+                <button
+                  key={item.id}
+                  onClick={() => handleNavigation(item.path, item.id)}
+                  className={cn(
+                    "flex flex-col items-center justify-center p-2 rounded-lg transition-colors",
+                    isActive ? "text-blue-600" : "text-gray-600"
+                  )}
+                >
+                  <div className={cn(
+                    "p-2 rounded-full transition-colors",
+                    isActive ? "bg-blue-50" : "hover:bg-gray-100"
+                  )}>
+                    {item.icon}
+                  </div>
+                  <span className="text-xs mt-1 font-medium">{item.label}</span>
+                </button>
+              );
+            })}
+            
+            {/* Mobile Menu Button */}
+            <div ref={dropdownRef} className="relative">
+              <button
+                onClick={() => setMobileOpen(!mobileOpen)}
+                className={cn(
+                  "flex flex-col items-center justify-center p-2 rounded-lg transition-colors",
+                  mobileOpen ? "text-blue-600" : "text-gray-600"
+                )}
+                aria-label="More menu options"
+              >
+                <div className={cn(
+                  "p-2 rounded-full transition-colors",
+                  mobileOpen ? "bg-blue-50" : "hover:bg-gray-100"
+                )}>
+                  {mobileOpen ? (
+                    <X className="h-5 w-5" />
+                  ) : (
+                    <ChevronDown className="h-5 w-5" />
+                  )}
+                </div>
+                <span className="text-xs mt-1 font-medium">More</span>
+              </button>
 
-      {/* Main content offset for sidebar */}
+              {/* Dropdown Menu */}
+              {mobileOpen && (
+                <div className="absolute bottom-16 left-1/2 transform -translate-x-1/2 mb-2 w-64 rounded-lg bg-white shadow-xl border border-gray-200 py-2 max-h-[calc(100vh-120px)] overflow-y-auto">
+                  <div className="px-4 py-2 border-b border-gray-100">
+                    <p className="text-sm font-medium text-gray-900">{userProfile.name || 'User'}</p>
+                    <p className="text-xs text-gray-500 capitalize">{userProfile.role || 'user'}</p>
+                  </div>
+                  
+                  <div className="py-2">
+                    {mobileDropdownItems.map((item) => {
+                      const isActive = activeTab === item.id;
+                      return (
+                        <button
+                          key={item.id}
+                          onClick={() => handleNavigation(item.path, item.id)}
+                          className={cn(
+                            "w-full flex items-center px-4 py-3 text-left transition-colors",
+                            isActive ? "bg-blue-50 text-blue-600" : "text-gray-700 hover:bg-gray-50"
+                          )}
+                        >
+                          <div className="mr-3">
+                            {item.icon}
+                          </div>
+                          <span className="flex-1 text-sm font-medium">{item.label}</span>
+                          {item.badge && (
+                            <span className="ml-2 h-5 w-5 rounded-full bg-red-500 text-xs flex items-center justify-center text-white font-bold">
+                              {item.badge}
+                            </span>
+                          )}
+                        </button>
+                      );
+                    })}
+                  </div>
+                  
+                  <div className="border-t border-gray-100 pt-2">
+                    <button
+                      onClick={handleLogout}
+                      className="w-full flex items-center px-4 py-3 text-red-600 hover:bg-red-50 transition-colors"
+                    >
+                      <LogOut className="h-5 w-5 mr-3" />
+                      <span className="text-sm font-medium">Logout</span>
+                    </button>
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Desktop Spacer */}
       <div className={cn(
-        "transition-all duration-300",
-        collapsed ? "lg:pl-20" : "lg:pl-64"
+        "hidden lg:block",
+        collapsed ? "w-16" : "w-64",
+        "transition-all duration-300"
       )} />
     </>
   );
