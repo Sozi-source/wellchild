@@ -36,13 +36,22 @@ import {
   Lock
 } from 'lucide-react';
 
-// Feature flag configuration for all routes
+interface NavItem {
+  id: string;
+  label: string;
+  icon: React.ReactNode;
+  path: string;
+  available: boolean;
+  badge?: number; 
+}
+
+// Feature flag configuration - MINIMAL UPDATE
 const FEATURE_FLAGS = {
   guardian: {
     dashboard: true,
+    children: true,        // ONLY this is available
     activity: false,
     notifications: false,
-    children: true,
     appointments: false,
     growth: false,
     vaccinations: false,
@@ -51,9 +60,9 @@ const FEATURE_FLAGS = {
   },
   clinician: {
     dashboard: true,
+    patients: true,        // ONLY this is available
     activity: false,
     notifications: false,
-    patients: true,
     appointments: false,
     records: false,
     prescriptions: false,
@@ -62,9 +71,9 @@ const FEATURE_FLAGS = {
   },
   admin: {
     dashboard: true,
+    users: true,           // ONLY this is available
     activity: false,
     notifications: false,
-    users: true,
     clinics: false,
     reports: false,
     audit: false,
@@ -72,7 +81,7 @@ const FEATURE_FLAGS = {
   }
 } as const;
 
-// Coming soon page component
+// Coming soon page component (unchanged)
 function ComingSoonToast({ label, onClose }: { label: string; onClose: () => void }) {
   useEffect(() => {
     const timer = setTimeout(onClose, 4000);
@@ -118,31 +127,66 @@ export default function RoleSidePanel() {
 
   const showComingSoonToast = (label: string) => {
     setToast({ label });
-    // Also log for debugging
     console.log(`Feature "${label}" is coming soon`);
   };
 
-  // Get navigation items with proper availability
+  // Get navigation items - SIMPLIFIED VERSION
   const getNavigationItems = () => {
     if (!userProfile) return [];
     
     const role = userProfile.role as keyof typeof FEATURE_FLAGS;
     const roleBasePath = `/dashboard/${role}`;
     
+    // Common items for all roles
     const baseItems = [
       {
         id: 'dashboard',
         label: 'Dashboard',
         icon: <Home className="h-5 w-5" />,
         path: roleBasePath,
-        available: FEATURE_FLAGS[role]?.dashboard ?? true
-      },
+        available: true  // Always available
+      }
+    ];
+    
+    // Role-specific items
+    const roleItems = {
+      guardian: [
+        {
+          id: 'children',
+          label: 'My Children',
+          icon: <Baby className="h-5 w-5" />,
+          path: '/dashboard/guardian/children',
+          available: FEATURE_FLAGS.guardian.children,
+        }
+      ],
+      clinician: [
+        {
+          id: 'patients',
+          label: 'My Patients',
+          icon: <Users className="h-5 w-5" />,
+          path: '/dashboard/clinician/children',
+          available: FEATURE_FLAGS.clinician.patients,
+        }
+      ],
+      admin: [
+        {
+          id: 'users',
+          label: 'User Management',
+          icon: <Users className="h-5 w-5" />,
+          path: '/dashboard/admin/users',
+          available: FEATURE_FLAGS.admin.users,
+        }
+      ]
+    };
+    
+    // Pending/coming soon items (common for all roles)
+    const pendingItems = [
       {
         id: 'activity',
         label: 'Activity',
         icon: <Activity className="h-5 w-5" />,
         path: `${roleBasePath}/activity`,
-        available: FEATURE_FLAGS[role]?.activity ?? false
+        available: false
       },
       {
         id: 'notifications',
@@ -150,162 +194,147 @@ export default function RoleSidePanel() {
         icon: <Bell className="h-5 w-5" />,
         path: `${roleBasePath}/notifications`,
         badge: 3,
-        available: FEATURE_FLAGS[role]?.notifications ?? false,
+        available: false,
       }
     ];
-
+    
+    // Combine items based on role
+    const items = [
+      ...baseItems,
+      ...(roleItems[role] || []),
+      ...pendingItems
+    ];
+    
+    // Add role-specific pending items
     switch (role) {
       case 'guardian':
-        return [
-          ...baseItems,
-          {
-            id: 'children',
-            label: 'My Children',
-            icon: <Baby className="h-5 w-5" />,
-            path: '/dashboard/guardian/children',
-            available: FEATURE_FLAGS.guardian.children,
-          },
+        items.push(
           {
             id: 'appointments',
             label: 'Appointments',
             icon: <Calendar className="h-5 w-5" />,
             path: '/dashboard/guardian/appointments',
-            available: FEATURE_FLAGS.guardian.appointments,
+            available: false,
           },
           {
             id: 'growth',
             label: 'Growth Charts',
             icon: <TrendingUp className="h-5 w-5" />,
             path: '/dashboard/guardian/growth',
-            available: FEATURE_FLAGS.guardian.growth,
+            available: false,
           },
           {
             id: 'vaccinations',
             label: 'Vaccinations',
             icon: <Syringe className="h-5 w-5" />,
             path: '/dashboard/guardian/vaccinations',
-            available: FEATURE_FLAGS.guardian.vaccinations,
+            available: false,
           },
           {
             id: 'records',
             label: 'Health Records',
             icon: <FileText className="h-5 w-5" />,
             path: '/dashboard/guardian/records',
-            available: FEATURE_FLAGS.guardian.records,
+            available: false,
           },
           {
             id: 'messages',
             label: 'Messages',
             icon: <MessageSquare className="h-5 w-5" />,
             path: '/dashboard/guardian/messages',
-            available: FEATURE_FLAGS.guardian.messages,
+            available: false,
           }
-        ];
+        );
+        break;
       case 'clinician':
-        return [
-          ...baseItems,
-          {
-            id: 'patients',
-            label: 'My Patients',
-            icon: <Users className="h-5 w-5" />,
-            path: '/dashboard/clinician/children',
-            available: FEATURE_FLAGS.clinician.patients,
-          },
+        items.push(
           {
             id: 'appointments',
             label: 'Appointments',
             icon: <Calendar className="h-5 w-5" />,
             path: '/dashboard/clinician/appointments',
-            available: FEATURE_FLAGS.clinician.appointments,
+            available: false,
           },
           {
             id: 'records',
             label: 'Medical Records',
             icon: <ClipboardList className="h-5 w-5" />,
             path: '/dashboard/clinician/records',
-            available: FEATURE_FLAGS.clinician.records,
+            available: false,
           },
           {
             id: 'prescriptions',
             label: 'Prescriptions',
             icon: <Pill className="h-5 w-5" />,
             path: '/dashboard/clinician/prescriptions',
-            available: FEATURE_FLAGS.clinician.prescriptions,
+            available: false,
           },
           {
             id: 'analytics',
             label: 'Analytics',
             icon: <BarChart3 className="h-5 w-5" />,
             path: '/dashboard/clinician/analytics',
-            available: FEATURE_FLAGS.clinician.analytics,
+            available: false,
           },
           {
             id: 'messages',
             label: 'Messages',
             icon: <MessageSquare className="h-5 w-5" />,
             path: '/dashboard/clinician/messages',
-            available: FEATURE_FLAGS.clinician.messages,
+            available: false,
           }
-        ];
+        );
+        break;
       case 'admin':
-        return [
-          ...baseItems,
-          {
-            id: 'users',
-            label: 'User Management',
-            icon: <Users className="h-5 w-5" />,
-            path: '/dashboard/admin/users',
-            available: FEATURE_FLAGS.admin.users,
-          },
+        items.push(
           {
             id: 'clinics',
             label: 'Clinic Management',
             icon: <Building className="h-5 w-5" />,
             path: '/dashboard/admin/clinics',
-            available: FEATURE_FLAGS.admin.clinics,
+            available: false,
           },
           {
             id: 'reports',
             label: 'Reports & Analytics',
             icon: <Database className="h-5 w-5" />,
             path: '/dashboard/admin/reports',
-            available: FEATURE_FLAGS.admin.reports,
+            available: false,
           },
           {
             id: 'audit',
             label: 'Audit Logs',
             icon: <AlertCircle className="h-5 w-5" />,
             path: '/dashboard/admin/audit',
-            available: FEATURE_FLAGS.admin.audit,
+            available: false,
           },
           {
             id: 'settings',
             label: 'System Settings',
             icon: <SettingsIcon className="h-5 w-5" />,
             path: '/dashboard/admin/settings',
-            available: FEATURE_FLAGS.admin.settings,
+            available: false,
           }
-        ];
-      default:
-        return baseItems;
+        );
+        break;
     }
+    
+    return items;
   };
 
-  // Mobile bottom navigation items (only available features)
+  // Mobile bottom navigation items - SIMPLIFIED
   const getMobileNavItems = () => {
     if (!userProfile) return [];
     
-    const role = userProfile.role as keyof typeof FEATURE_FLAGS;
-    
-    // Only show available items on mobile bottom nav
+    // Only show available items (dashboard + role-specific available item)
     const allItems = getNavigationItems();
     const availableItems = allItems.filter(item => item.available);
     
-    // Limit to max 4 items for mobile bottom nav
-    return availableItems.slice(0, 4);
+    // Limit to max 3 items for mobile bottom nav
+    return availableItems.slice(0, 3);
   };
 
-  // Role styles
+  // Role styles (unchanged)
   const getRoleStyles = () => {
     if (!userProfile) {
       return {
@@ -388,7 +417,7 @@ export default function RoleSidePanel() {
     }
   };
 
-  // Get role icon
+  // Get role icon (unchanged)
   const getRoleIcon = () => {
     if (!userProfile) return <User className="h-6 w-6" />;
     
@@ -482,8 +511,8 @@ export default function RoleSidePanel() {
   // Don't render anything during SSR or if no user profile
   if (!mounted || !userProfile) return null;
 
-  // Navigation item component
-  const renderNavItem = (item: any, isMobileBottomNav: boolean = false) => {
+  // Navigation item component (unchanged)
+  const renderNavItem = (item: NavItem, isMobileBottomNav: boolean = false) => {
     const isActive = activeTab === item.id;
     const isPending = !item.available;
     
@@ -526,7 +555,6 @@ export default function RoleSidePanel() {
           title={collapsed ? `${item.label} (Coming Soon)` : undefined}
           onClick={() => showComingSoonToast(item.label)}
         >
-          {/* Coming soon indicator */}
           <div className="relative opacity-60">
             <div className="p-1.5 rounded-md">
               {item.icon}
@@ -552,7 +580,6 @@ export default function RoleSidePanel() {
             </>
           )}
           
-          {/* Tooltip for collapsed sidebar */}
           {collapsed && (
             <div className="absolute left-full ml-2 top-1/2 -translate-y-1/2 px-3 py-2 bg-gray-800 text-white text-sm rounded-lg opacity-0 group-hover:opacity-100 transition-opacity duration-200 whitespace-nowrap z-50 pointer-events-none">
               {item.label}
@@ -589,7 +616,7 @@ export default function RoleSidePanel() {
             {item.icon}
           </div>
           
-          {item.badge && (
+          {item && item.badge && (
             <span className={cn(
               "absolute -top-1 -right-1 h-5 w-5 rounded-full text-xs flex items-center justify-center font-bold",
               roleStyles.badgeColor
@@ -605,7 +632,6 @@ export default function RoleSidePanel() {
           </span>
         )}
         
-        {/* Tooltip for collapsed sidebar */}
         {collapsed && !isActive && (
           <div className="absolute left-full ml-2 top-1/2 -translate-y-1/2 px-3 py-2 bg-gray-800 text-white text-sm rounded-lg opacity-0 group-hover:opacity-100 transition-opacity duration-200 whitespace-nowrap z-50 pointer-events-none">
             {item.label}
@@ -618,7 +644,6 @@ export default function RoleSidePanel() {
 
   return (
     <>
-      {/* Toast Notification */}
       {toast && <ComingSoonToast label={toast.label} onClose={() => setToast(null)} />}
 
       {/* Desktop Side Panel */}
@@ -631,18 +656,10 @@ export default function RoleSidePanel() {
           "shadow-xl"
         )}
       >
-        {/* Header */}
-        <div className={cn(
-          "flex items-center justify-between p-4 border-b",
-          roleStyles.sidebarBorder
-        )}>
+        <div className={cn("flex items-center justify-between p-4 border-b", roleStyles.sidebarBorder)}>
           {!collapsed && (
             <div className="flex items-center space-x-3">
-              <div className={cn(
-                "h-10 w-10 rounded-lg flex items-center justify-center",
-                roleStyles.sidebarIconBg,
-                roleStyles.iconColor
-              )}>
+              <div className={cn("h-10 w-10 rounded-lg flex items-center justify-center", roleStyles.sidebarIconBg, roleStyles.iconColor)}>
                 {getRoleIcon()}
               </div>
               <div className="flex-1 min-w-0">
@@ -653,42 +670,27 @@ export default function RoleSidePanel() {
           )}
           
           {collapsed && (
-            <div className={cn(
-              "h-10 w-10 rounded-lg flex items-center justify-center mx-auto",
-              roleStyles.sidebarIconBg,
-              roleStyles.iconColor
-            )}>
+            <div className={cn("h-10 w-10 rounded-lg flex items-center justify-center mx-auto", roleStyles.sidebarIconBg, roleStyles.iconColor)}>
               {getRoleIcon()}
             </div>
           )}
           
-          {/* Toggle Button */}
           {!isMobile && (
             <button
               onClick={toggleSidebar}
-              className={cn(
-                "p-2 rounded-lg transition-colors",
-                roleStyles.sidebarHoverBg,
-                collapsed ? "mx-auto" : ""
-              )}
+              className={cn("p-2 rounded-lg transition-colors", roleStyles.sidebarHoverBg, collapsed ? "mx-auto" : "")}
               aria-label={collapsed ? "Expand sidebar" : "Collapse sidebar"}
             >
-              {collapsed ? (
-                <ChevronRight className="h-4 w-4" />
-              ) : (
-                <ChevronLeft className="h-4 w-4" />
-              )}
+              {collapsed ? <ChevronRight className="h-4 w-4" /> : <ChevronLeft className="h-4 w-4" />}
             </button>
           )}
         </div>
 
-        {/* Desktop Navigation */}
         <nav className="flex-1 overflow-y-auto py-4">
           <div className="space-y-1 px-2">
             {navigationItems.map((item) => renderNavItem(item))}
           </div>
           
-          {/* Development Status */}
           {!collapsed && (
             <div className="mt-6 px-3">
               <div className="text-xs font-medium uppercase tracking-wider opacity-60 mb-2">
@@ -712,19 +714,10 @@ export default function RoleSidePanel() {
           )}
         </nav>
 
-        {/* Footer */}
         <div className="border-t border-white/10 p-4 space-y-3">
-          {/* User Info */}
-          <div className={cn(
-            "flex items-center p-2 rounded-lg",
-            collapsed ? "justify-center" : "justify-start space-x-3",
-            "bg-white/5"
-          )}>
+          <div className={cn("flex items-center p-2 rounded-lg", collapsed ? "justify-center" : "justify-start space-x-3", "bg-white/5")}>
             <div className="relative">
-              <div className={cn(
-                "h-9 w-9 rounded-full flex items-center justify-center text-white font-bold",
-                roleStyles.sidebarIconBg
-              )}>
+              <div className={cn("h-9 w-9 rounded-full flex items-center justify-center text-white font-bold", roleStyles.sidebarIconBg)}>
                 {userProfile.name?.charAt(0)?.toUpperCase() || 'U'}
               </div>
               <div className="absolute -bottom-0.5 -right-0.5 h-3 w-3 rounded-full border-2 border-slate-900 bg-green-500"></div>
@@ -738,7 +731,6 @@ export default function RoleSidePanel() {
             )}
           </div>
 
-          {/* Logout Button */}
           <button
             onClick={handleLogout}
             className={cn(
@@ -760,7 +752,6 @@ export default function RoleSidePanel() {
           <div className="flex items-center justify-around px-2 py-2">
             {mobileNavItems.map((item) => renderNavItem(item, true))}
             
-            {/* Mobile Menu Button */}
             <div ref={dropdownRef} className="relative flex-1">
               <button
                 onClick={() => setMobileOpen(!mobileOpen)}
@@ -770,20 +761,12 @@ export default function RoleSidePanel() {
                 )}
                 aria-label="More menu options"
               >
-                <div className={cn(
-                  "p-2 rounded-full transition-colors",
-                  mobileOpen ? "bg-blue-50" : "bg-gray-50 hover:bg-gray-100"
-                )}>
-                  {mobileOpen ? (
-                    <X className="h-5 w-5" />
-                  ) : (
-                    <ChevronDown className="h-5 w-5" />
-                  )}
+                <div className={cn("p-2 rounded-full transition-colors", mobileOpen ? "bg-blue-50" : "bg-gray-50 hover:bg-gray-100")}>
+                  {mobileOpen ? <X className="h-5 w-5" /> : <ChevronDown className="h-5 w-5" />}
                 </div>
                 <span className="text-xs mt-1 font-medium">More</span>
               </button>
 
-              {/* Dropdown Menu */}
               {mobileOpen && (
                 <div className="absolute bottom-16 left-1/2 transform -translate-x-1/2 mb-2 w-64 rounded-lg bg-white shadow-xl border border-gray-200 py-2 max-h-[calc(100vh-120px)] overflow-y-auto">
                   <div className="px-4 py-2 border-b border-gray-100">
@@ -820,11 +803,6 @@ export default function RoleSidePanel() {
                               Soon
                             </span>
                           )}
-                          {item.badge && (
-                            <span className="ml-2 h-5 w-5 rounded-full bg-red-500 text-xs flex items-center justify-center text-white font-bold">
-                              {item.badge}
-                            </span>
-                          )}
                         </button>
                       );
                     })}
@@ -846,14 +824,8 @@ export default function RoleSidePanel() {
         </div>
       )}
 
-      {/* Desktop Spacer */}
-      <div className={cn(
-        "hidden lg:block",
-        collapsed ? "w-16" : "w-64",
-        "transition-all duration-300"
-      )} />
+      <div className={cn("hidden lg:block", collapsed ? "w-16" : "w-64", "transition-all duration-300")} />
 
-      {/* Add custom CSS for progress animation */}
       <style jsx global>{`
         @keyframes progress {
           from { width: 0%; }

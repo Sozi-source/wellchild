@@ -845,8 +845,8 @@ export default function MainDashboardPage() {
                   
                   {statsUpdated && (
                     <div className="flex items-start gap-3 p-3 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors">
-                      <div className="w-8 h-8 flex items-center justify-center bg-green-100 text-green-600 rounded-full">
-                        <RefreshCw className="w-4 h-4" />
+                      <div className="w-8 h-8 flex text-sm items-center justify-center bg-green-100 text-green-600 rounded-full">
+                        <RefreshCw className="w-4 h-4 text-sm" />
                       </div>
                       <div className="flex-1">
                         <p className="text-sm font-medium text-gray-900">Stats updated</p>

@@ -515,9 +515,9 @@ export default function AdminUsersPage() {
                     variant="outline" 
                     onClick={refreshData}
                     disabled={loading}
-                    className="min-w-[100px]"
+                    className="min-w-[100px] text-sm"
                   >
-                    <RefreshCw className={`h-4 w-4 mr-2 ${loading ? 'animate-spin' : ''}`} />
+                    <RefreshCw className={`h-4 w-4 mr-2 text-sm ${loading ? 'animate-spin' : ''}`} />
                     {loading ? 'Refreshing' : 'Refresh'}
                   </Button>
                   <Button 

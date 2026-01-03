@@ -133,9 +133,9 @@ export default function AdminCliniciansPage() {
                   variant="outline"
                   onClick={handleRefresh}
                   disabled={refreshing}
-                  className="flex items-center gap-2"
+                  className="flex items-center gap-2 text-sm"
                 >
-                  <RefreshCw className={`h-4 w-4 ${refreshing ? 'animate-spin' : ''}`} />
+                  <RefreshCw className={`h-4 w-4 text-sm ${refreshing ? 'animate-spin' : ''}`} />
                   Refresh
                 </Button>
                 <Button
