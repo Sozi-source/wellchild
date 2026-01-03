@@ -190,17 +190,57 @@ export default function LandingPage() {
                 WHO-Standard Platform
               </div>
               
-              <h1 className="text-3xl sm:text-4xl lg:text-5xl font-bold text-gray-900 mb-6 leading-tight">
+              <h1 className="text-2xl sm:text-3xl lg:text-4xl font-bold text-gray-900 mb-6 leading-tight">
                 Pediatric
                 <span className="block text-transparent bg-clip-text bg-gradient-to-r from-blue-600 to-cyan-500">
                   Growth Monitor
                 </span>
               </h1>
-              
-              <p className="text-lg text-gray-600 mb-8 leading-relaxed">
-                WHO-standard platform connecting healthcare providers and families for seamless child growth tracking, early intervention, and better outcomes.
-              </p>
-              
+
+              <div className="mb-8 space-y-4">
+                <p className="text-sm text-gray-600 leading-relaxed font-medium">
+                  A WHO-standard platform designed for modern pediatric care:
+                </p>
+                
+                <ul className="space-y-3">
+                  <li className="flex items-start space-x-3">
+                    <div className="h-6 w-6 rounded-full bg-gradient-to-r from-blue-500 to-cyan-400 flex items-center justify-center flex-shrink-0 mt-0.5">
+                      <svg className="h-3 w-3 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M5 13l4 4L19 7" />
+                      </svg>
+                    </div>
+                    <span className="text-gray-600">Connect healthcare providers with families seamlessly</span>
+                  </li>
+                  
+                  <li className="flex items-start space-x-3">
+                    <div className="h-6 w-6 rounded-full bg-gradient-to-r from-blue-500 to-cyan-400 flex items-center justify-center flex-shrink-0 mt-0.5">
+                      <svg className="h-3 w-3 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M5 13l4 4L19 7" />
+                      </svg>
+                    </div>
+                    <span className="text-gray-600">Track child growth using WHO standards and percentiles</span>
+                  </li>
+                  
+                  <li className="flex items-start space-x-3">
+                    <div className="h-6 w-6 rounded-full bg-gradient-to-r from-blue-500 to-cyan-400 flex items-center justify-center flex-shrink-0 mt-0.5">
+                      <svg className="h-3 w-3 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M5 13l4 4L19 7" />
+                      </svg>
+                    </div>
+                    <span className="text-gray-600">Enable early intervention with real-time growth alerts</span>
+                  </li>
+                  
+                  <li className="flex items-start space-x-3">
+                    <div className="h-6 w-6 rounded-full bg-gradient-to-r from-blue-500 to-cyan-400 flex items-center justify-center flex-shrink-0 mt-0.5">
+                      <svg className="h-3 w-3 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M5 13l4 4L19 7" />
+                      </svg>
+                    </div>
+                    <span className="text-gray-600">Achieve better health outcomes through collaborative care</span>
+                  </li>
+                </ul>
+              </div>
+                            
               <div className="flex flex-col sm:flex-row gap-4 mb-8">
                 <button
                   onClick={handleGetStarted}
@@ -265,48 +305,108 @@ export default function LandingPage() {
         </div>
       </section>
 
-      {/* Role Selection */}
-      <section className="py-12 sm:py-16 bg-gray-50">
+      {/* Updated: Healthcare Providers & Families Section */}
+      <section className="py-12 sm:py-16 bg-gradient-to-b from-gray-50 to-white">
         <div className="container mx-auto px-4 sm:px-6 lg:px-8">
           <div className="text-center mb-12">
-            <h2 className="text-2xl sm:text-3xl font-bold text-gray-900 mb-4">
-              Built for Everyone in the Care Team
+            <div className="inline-flex items-center px-4 py-2 bg-gradient-to-r from-blue-500 to-emerald-500 text-white rounded-full text-sm font-medium mb-4">
+              <Users className="h-4 w-4 mr-2" />
+              Designed for the Complete Care Team
+            </div>
+            <h2 className="text-xl sm:text-2xl font-bold text-gray-900 mb-4">
+              Healthcare Providers & Families Working Together
             </h2>
             <p className="text-lg text-gray-600 max-w-2xl mx-auto">
-              Tailored experience for healthcare professionals and families
+              Our platform bridges the gap between medical expertise and family involvement
             </p>
           </div>
           
           <div className="max-w-4xl mx-auto">
-            <div className="flex flex-col sm:flex-row justify-center gap-2 mb-8">
-              <button
-                onClick={() => setActiveRole('clinician')}
-                className={cn(
-                  "flex items-center justify-center px-6 py-3 rounded-xl font-medium transition-all",
-                  activeRole === 'clinician'
-                    ? "bg-gradient-to-r from-blue-500 to-cyan-400 text-white shadow-lg"
-                    : "bg-gray-100 text-gray-600 hover:bg-gray-200"
-                )}
-              >
-                <Stethoscope className="h-5 w-5 mr-2" />
-                For Healthcare Professionals
-              </button>
-              <button
-                onClick={() => setActiveRole('parent')}
-                className={cn(
-                  "flex items-center justify-center px-6 py-3 rounded-xl font-medium transition-all",
-                  activeRole === 'parent'
-                    ? "bg-gradient-to-r from-blue-500 to-cyan-400 text-white shadow-lg"
-                    : "bg-gray-100 text-gray-600 hover:bg-gray-200"
-                )}
-              >
-                <Heart className="h-5 w-5 mr-2" />
-                For Parents & Guardians
-              </button>
+            {/* Two Column Visual */}
+            <div className="grid lg:grid-cols-2 gap-8 mb-12">
+              <div className="bg-gradient-to-br from-blue-500 to-cyan-500 rounded-2xl p-8 text-white relative overflow-hidden">
+                <div className="absolute top-4 right-4 opacity-20">
+                  <Stethoscope className="h-24 w-24" />
+                </div>
+                <div className="relative z-10">
+                  <div className="flex items-center mb-4">
+                    <div className="h-12 w-12 rounded-xl bg-white/20 flex items-center justify-center backdrop-blur-sm mr-4">
+                      <Stethoscope className="h-6 w-6 text-white" />
+                    </div>
+                    <div>
+                      <h3 className="text-sm font-bold">Healthcare Providers</h3>
+                      <p className="text-blue-100 text-sm">Nutritionist, Doctors, Nurses, Clinicians</p>
+                    </div>
+                  </div>
+                  <p className="text-blue-50 mb-6">
+                    Professional tools for monitoring, analysis, and patient communication
+                  </p>
+                  <button
+                    onClick={() => setActiveRole('clinician')}
+                    className="w-full bg-white text-blue-600 py-3 rounded-xl font-semibold hover:bg-gray-100 transition-colors"
+                  >
+                    View Healthcare Features
+                  </button>
+                </div>
+              </div>
+              
+              <div className="bg-gradient-to-br from-emerald-500 to-green-500 rounded-2xl p-8 text-white relative overflow-hidden">
+                <div className="absolute top-4 right-4 opacity-20">
+                  <Heart className="h-24 w-24" />
+                </div>
+                <div className="relative z-10">
+                  <div className="flex items-center mb-4">
+                    <div className="h-12 w-12 rounded-xl bg-white/20 flex items-center justify-center backdrop-blur-sm mr-4">
+                      <Heart className="h-6 w-6 text-white" />
+                    </div>
+                    <div>
+                      <h3 className="text-sm font-bold">Parents & Guardians</h3>
+                      <p className="text-emerald-100 text-sm">Mothers, Fathers, Caregivers</p>
+                    </div>
+                  </div>
+                  <p className="text-emerald-50 mb-6">
+                    Easy tracking, alerts, and direct communication with healthcare teams
+                  </p>
+                  <button
+                    onClick={() => setActiveRole('parent')}
+                    className="w-full bg-white text-emerald-600 py-3 rounded-xl font-semibold hover:bg-gray-100 transition-colors"
+                  >
+                    View Parent Features
+                  </button>
+                </div>
+              </div>
             </div>
             
-            {/* Benefits Card */}
-            <div className="bg-white rounded-2xl shadow-lg p-6 sm:p-8 border border-gray-100">
+            {/* Connection Arrow Visual */}
+            <div className="relative mb-8 hidden lg:block">
+              <div className="absolute inset-0 flex items-center justify-center">
+                <div className="h-0.5 w-full bg-gradient-to-r from-blue-500 via-purple-500 to-emerald-500"></div>
+                <div className="absolute h-8 w-8 rounded-full bg-gradient-to-r from-blue-500 to-emerald-500 flex items-center justify-center">
+                  <Users className="h-4 w-4 text-white" />
+                </div>
+              </div>
+              <div className="relative flex justify-between">
+                <div className="text-center">
+                  <div className="h-16 w-16 rounded-full bg-blue-100 flex items-center justify-center mx-auto mb-2">
+                    <Stethoscope className="h-8 w-8 text-blue-600" />
+                  </div>
+                  <span className="text-sm font-medium text-gray-700">Healthcare Team</span>
+                </div>
+                <div className="text-center">
+                  <span className="text-sm font-medium text-gray-500">Connected through</span>
+                  <div className="text-xl font-bold text-gray-900 mt-1">GrowthWatch</div>
+                </div>
+                <div className="text-center">
+                  <div className="h-16 w-16 rounded-full bg-emerald-100 flex items-center justify-center mx-auto mb-2">
+                    <Heart className="h-8 w-8 text-emerald-600" />
+                  </div>
+                  <span className="text-sm font-medium text-gray-700">Family & Caregivers</span>
+                </div>
+              </div>
+            </div>
+
+            {/* Combined Benefits (for mobile) */}
+            <div className="lg:hidden bg-white rounded-2xl shadow-lg p-6 sm:p-8 border border-gray-100">
               <h3 className="text-xl sm:text-2xl font-bold text-gray-900 mb-6">
                 Benefits for {activeRole === 'clinician' ? 'Healthcare Professionals' : 'Parents & Guardians'}
               </h3>
@@ -327,7 +427,7 @@ export default function LandingPage() {
       <section className="py-12 sm:py-16">
         <div className="container mx-auto px-4 sm:px-6 lg:px-8">
           <div className="text-center mb-12">
-            <h2 className="text-2xl sm:text-3xl font-bold text-gray-900 mb-4">
+            <h2 className="text-xl sm:text-2xl font-bold text-gray-900 mb-4">
               Comprehensive Features
             </h2>
             <p className="text-lg text-gray-600 max-w-2xl mx-auto">
@@ -365,7 +465,7 @@ export default function LandingPage() {
       <section className="py-12 sm:py-16 bg-gray-50">
         <div className="container mx-auto px-4 sm:px-6 lg:px-8">
           <div className="text-center mb-12">
-            <h2 className="text-2xl sm:text-3xl font-bold text-gray-900 mb-4">
+            <h2 className="text-xl sm:text-3xl font-bold text-gray-900 mb-4">
               Simple & Effective Process
             </h2>
             <p className="text-lg text-gray-600 max-w-2xl mx-auto">
@@ -398,10 +498,10 @@ export default function LandingPage() {
           <div className="flex flex-col lg:flex-row items-center gap-8 lg:gap-12">
             {/* Text Content */}
             <div className="w-full lg:w-1/2">
-              <h2 className="text-2xl sm:text-3xl font-bold text-gray-900 mb-6">
+              <h2 className="text-xl sm:text-2xl font-bold text-gray-900 mb-6">
                 Interactive Growth Dashboard
               </h2>
-              <p className="text-lg text-gray-600 mb-6 leading-relaxed">
+              <p className="text-sm text-gray-600 mb-6 leading-relaxed">
                 Visualize your child's growth journey with our intuitive dashboard that displays key metrics and trends at a glance.
               </p>
               <ul className="space-y-4">
@@ -450,10 +550,10 @@ export default function LandingPage() {
       <section className="py-12 sm:py-16 bg-gradient-to-br from-blue-600 via-blue-500 to-cyan-500">
         <div className="container mx-auto px-4 sm:px-6 lg:px-8">
           <div className="max-w-3xl mx-auto text-center text-white">
-            <h2 className="text-2xl sm:text-3xl font-bold mb-6">
+            <h2 className="text-xl sm:text-2xl font-bold mb-6">
               Ready to Transform Pediatric Care?
             </h2>
-            <p className="text-lg sm:text-xl text-blue-100 mb-8 leading-relaxed">
+            <p className="text-sm sm:text-xl text-blue-100 mb-8 leading-relaxed">
               Join healthcare professionals and families using GrowthWatch for better growth outcomes.
             </p>
             <div className="flex flex-col sm:flex-row gap-4 justify-center">
@@ -471,6 +571,9 @@ export default function LandingPage() {
                 Sign In
               </button>
             </div>
+            <p className="mt-6 text-blue-200 text-sm">
+              No credit card required • HIPAA-compliant • 14-day free trial
+            </p>
           </div>
         </div>
       </section>
