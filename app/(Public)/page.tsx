@@ -134,13 +134,7 @@ export default function LandingPage() {
                 onClick={handleGetStarted}
                 className="inline-flex items-center justify-center px-6 sm:px-8 py-3 sm:py-4 bg-gradient-to-r from-blue-500 to-blue-600 text-white text-base sm:text-lg font-semibold rounded-xl hover:from-blue-600 hover:to-blue-700 transition-all shadow-lg hover:shadow-xl"
               >
-                Get Started Free <ArrowRight className="ml-3 h-4 w-4 sm:h-5 sm:w-5" />
-              </button>
-              <button 
-                onClick={() => router.push('/login')}
-                className="sm:hidden inline-flex items-center justify-center px-6 py-3 bg-white text-gray-700 text-base font-semibold rounded-xl hover:bg-gray-50 transition-colors border border-gray-200"
-              >
-                Start Now <ArrowRight className="ml-3 h-4 w-4" />
+                Get Started <ArrowRight className="ml-3 h-4 w-4 sm:h-5 sm:w-5" />
               </button>
             </div>
 
